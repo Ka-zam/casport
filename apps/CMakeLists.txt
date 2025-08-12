@@ -1,24 +1,12 @@
-set(CMAKE_VERBOSE_MAKEFILE "OFF")
+# Example applications
 
-#######################################################################################################
-#
-#  Add test program
-#
-#######################################################################################################
-add_executable(tcas tcas.cc)
-
-target_include_directories(tcas PUBLIC
- ${PROJECT_SOURCE_DIR}/include
+add_executable(example_filter example_filter.cc)
+target_include_directories(example_filter PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+target_link_libraries(example_filter PUBLIC
+    cascadix
 )
 
-target_link_libraries(tcas PUBLIC
- casport
-)
-
-#######################################################################################################
-#
-#  Install location
-#
-#######################################################################################################
-set(APPS tcas)
-install(TARGETS ${APPS} DESTINATION bin)
+# Install
+install(TARGETS example_filter DESTINATION bin)
