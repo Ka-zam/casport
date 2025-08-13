@@ -138,25 +138,24 @@ private:
     double m_capacitance;
 };
 
-// Transmission line
+// Transmission line with complex Z0 support
 class transmission_line : public frequency_dependent_two_port {
 public:
-    // Constructor with physical length and characteristic impedance
-    transmission_line(double length, double z0, double freq, 
-                     double vf = 1.0, double loss_db_per_m = 0.0)
-        : frequency_dependent_two_port(freq), 
-          m_length(length), 
-          m_z0(z0), 
+    // Constructor with complex characteristic impedance (general case)
+    transmission_line(double length, const complex& z0_complex, double freq,
+                     double vf = 1.0, double alpha_np_per_m = 0.0)
+        : frequency_dependent_two_port(freq),
+          m_length(length),
+          m_z0(z0_complex),
           m_velocity_factor(vf),
-          m_loss_db_per_m(loss_db_per_m) {
+          m_alpha(alpha_np_per_m) {
         
         // Calculate propagation constant
-        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_velocity_factor;  // Phase constant
-        double alpha = m_loss_db_per_m * std::log(10.0) / 20.0;  // Nepers per meter
-        complex gamma(alpha, beta);
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_velocity_factor;
+        complex gamma(m_alpha, beta);
         complex gamma_l = gamma * m_length;
         
-        // Calculate ABCD parameters
+        // Calculate ABCD parameters for complex Z0
         complex cosh_gl = std::cosh(gamma_l);
         complex sinh_gl = std::sinh(gamma_l);
         
@@ -168,26 +167,40 @@ public:
         };
     }
     
+    // Constructor with real characteristic impedance (convenience)
+    transmission_line(double length, double z0_real, double freq, 
+                     double vf = 1.0, double loss_db_per_m = 0.0)
+        : transmission_line(length, complex(z0_real, 0.0), freq, vf, 
+                           loss_db_per_m * std::log(10.0) / 20.0) {}
+    
     // Constructor with electrical length in degrees
-    static transmission_line from_electrical_length(double theta_degrees, double z0, double freq) {
-        double wavelength = C0 / freq;
+    static transmission_line from_electrical_length(double theta_degrees, double z0, double freq,
+                                                   double vf = 1.0) {
+        double wavelength = C0 / (freq * vf);
         double length = (theta_degrees / 360.0) * wavelength;
-        return transmission_line(length, z0, freq);
+        return transmission_line(length, z0, freq, vf);
+    }
+    
+    // Constructor for lossy line with complex Z0
+    static transmission_line lossy(double length, const complex& z0, double freq,
+                                  double alpha_np_per_m, double vf = 1.0) {
+        return transmission_line(length, z0, freq, vf, alpha_np_per_m);
     }
     
     double length() const { return m_length; }
-    double characteristic_impedance() const { return m_z0; }
+    complex characteristic_impedance() const { return m_z0; }
     double velocity_factor() const { return m_velocity_factor; }
     double electrical_length_degrees() const {
         double wavelength = C0 / (m_frequency * m_velocity_factor);
         return (m_length / wavelength) * 360.0;
     }
+    double attenuation() const { return m_alpha; }
     
 private:
     double m_length;  // Physical length in meters
-    double m_z0;      // Characteristic impedance in ohms
+    complex m_z0;     // Complex characteristic impedance
     double m_velocity_factor;  // Velocity factor (1.0 for air/vacuum)
-    double m_loss_db_per_m;    // Loss in dB per meter
+    double m_alpha;   // Attenuation constant in Nepers/meter
 };
 
 // Ideal transformer
