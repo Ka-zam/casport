@@ -135,4 +135,36 @@ EMSCRIPTEN_BINDINGS(cascadix_module) {
     // Constants
     constant("PI", PI);
     constant("C0", C0);
+    
+    // Frequency sweep enums and structures
+    enum_<sweep_type>("SweepType")
+        .value("LINEAR", sweep_type::LINEAR)
+        .value("LOG", sweep_type::LOG);
+    
+    class_<frequency_sweep>("FrequencySweep")
+        .constructor<double, double, size_t, sweep_type>()
+        .property("startFreq", &frequency_sweep::start_freq)
+        .property("stopFreq", &frequency_sweep::stop_freq)
+        .property("numPoints", &frequency_sweep::num_points)
+        .property("type", &frequency_sweep::type)
+        .function("getFrequencies", &frequency_sweep::get_frequencies);
+    
+    // Sweep results wrapper
+    class_<sweep_results>("SweepResults")
+        .property("frequencies", &sweep_results::frequencies)
+        .property("sParams", &sweep_results::s_params)
+        .property("inputImpedances", &sweep_results::input_impedances)
+        .property("outputImpedances", &sweep_results::output_impedances)
+        .function("getS11", &sweep_results::get_s11)
+        .function("getS21", &sweep_results::get_s21)
+        .function("getS11Db", &sweep_results::get_s11_db)
+        .function("getS21Db", &sweep_results::get_s21_db)
+        .function("getVswr", &sweep_results::get_vswr)
+        .function("getS11PhaseDeg", &sweep_results::get_s11_phase_deg)
+        .function("getS21PhaseDeg", &sweep_results::get_s21_phase_deg);
+    
+    // Register std::vector types for frequency sweep
+    register_vector<double>("VectorDouble");
+    register_vector<complex>("VectorComplex");
+    register_vector<s_parameters>("VectorSParams");
 }

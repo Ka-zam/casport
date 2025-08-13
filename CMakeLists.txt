@@ -82,18 +82,23 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     add_executable(test_conversions tests/test_conversions.cc)
     target_link_libraries(test_conversions ${PROJECT_NAME} gtest_main)
     
+    add_executable(test_frequency_sweep tests/test_frequency_sweep.cc)
+    target_link_libraries(test_frequency_sweep ${PROJECT_NAME} gtest_main)
+    
     # Add tests
     include(GoogleTest)
     gtest_discover_tests(test_components)
     gtest_discover_tests(test_cascading)
     gtest_discover_tests(test_conversions)
+    gtest_discover_tests(test_frequency_sweep)
     
     # Combined test runner
     add_custom_target(run_tests
         COMMAND test_components
         COMMAND test_cascading
         COMMAND test_conversions
-        DEPENDS test_components test_cascading test_conversions
+        COMMAND test_frequency_sweep
+        DEPENDS test_components test_cascading test_conversions test_frequency_sweep
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
@@ -121,6 +126,10 @@ if(EMSCRIPTEN)
             RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/wasm
             LINK_FLAGS "-s MODULARIZE=1 -s EXPORT_NAME='CascadixModule' -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap'] --bind"
         )
+        
+        # Copy HTML demo file to build directory
+        configure_file(${CMAKE_SOURCE_DIR}/wasm/cascadix_demo.html 
+                      ${CMAKE_BINARY_DIR}/wasm/index.html COPYONLY)
     endif()
 endif()
 

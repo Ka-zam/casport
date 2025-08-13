@@ -1,0 +1,1302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cascadix WebAssembly Demo</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+        }
+        
+        .header {
+            text-align: center;
+            color: white;
+            margin-bottom: 30px;
+        }
+        
+        h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.3);
+        }
+        
+        .subtitle {
+            font-size: 1.2em;
+            opacity: 0.95;
+        }
+        
+        .main-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+        
+        .container {
+            background: white;
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .container h2 {
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .input-group {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        label {
+            flex: 0 0 180px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input, select {
+            flex: 1;
+            padding: 8px 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 14px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            margin-right: 10px;
+            margin-top: 10px;
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .results {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            white-space: pre-wrap;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .error {
+            border-left-color: #e74c3c;
+            background: #ffe5e5;
+            color: #c0392b;
+        }
+        
+        .success {
+            border-left-color: #27ae60;
+            background: #e8f8f5;
+        }
+        
+        .test-suite {
+            background: #2c3e50;
+            color: #ecf0f1;
+            padding: 20px;
+            border-radius: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .test-suite h2 {
+            color: #ecf0f1;
+            border-bottom: 2px solid #3498db;
+        }
+        
+        .test-result {
+            margin: 10px 0;
+            padding: 10px;
+            border-left: 3px solid #3498db;
+            background: rgba(52, 152, 219, 0.1);
+        }
+        
+        .test-pass {
+            border-left-color: #27ae60;
+            background: rgba(39, 174, 96, 0.1);
+        }
+        
+        .test-fail {
+            border-left-color: #e74c3c;
+            background: rgba(231, 76, 60, 0.1);
+        }
+        
+        .tabs {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #e0e0e0;
+        }
+        
+        .tab {
+            padding: 10px 20px;
+            background: none;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            color: #667eea;
+        }
+        
+        .tab.active {
+            color: #667eea;
+            border-bottom-color: #667eea;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .status-indicator {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .status-ready {
+            background: #27ae60;
+        }
+        
+        .status-loading {
+            background: #f39c12;
+        }
+        
+        .status-error {
+            background: #e74c3c;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+        
+        @media (max-width: 768px) {
+            .main-container {
+                grid-template-columns: 1fr;
+            }
+            .grid-2 {
+                grid-template-columns: 1fr;
+            }
+            label {
+                flex: 0 0 120px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 Cascadix WebAssembly Demo</h1>
+        <div class="subtitle">High-Performance RF Circuit Analysis in the Browser</div>
+        <div style="margin-top: 15px;">
+            <span class="status-indicator status-loading" id="statusIndicator"></span>
+            <span id="statusText">Loading WASM module...</span>
+        </div>
+    </div>
+
+    <div class="tabs">
+        <button class="tab active" onclick="showTab('design')">Circuit Design</button>
+        <button class="tab" onclick="showTab('analysis')">Network Analysis</button>
+        <button class="tab" onclick="showTab('sweep')">Frequency Sweep</button>
+        <button class="tab" onclick="showTab('benchmark')">Performance</button>
+        <button class="tab" onclick="showTab('tests')">Test Suite</button>
+    </div>
+
+    <!-- Circuit Design Tab -->
+    <div id="design" class="tab-content active">
+        <div class="main-container">
+            <div class="container">
+                <h2>📐 LC Filter Designer</h2>
+                <div class="input-group">
+                    <label>Filter Type:</label>
+                    <select id="filterType">
+                        <option value="butterworth">Butterworth</option>
+                        <option value="chebyshev">Chebyshev (coming soon)</option>
+                        <option value="elliptic">Elliptic (coming soon)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Cutoff Freq (GHz):</label>
+                    <input type="number" id="cutoff" value="1.0" step="0.1" min="0.1">
+                </div>
+                <div class="input-group">
+                    <label>System Z (Ω):</label>
+                    <input type="number" id="z0" value="50" step="1" min="1">
+                </div>
+                <div class="input-group">
+                    <label>Test Freq (GHz):</label>
+                    <input type="number" id="testFreq" value="0.5" step="0.1" min="0.1">
+                </div>
+                <button onclick="analyzeFilter()">Analyze Filter</button>
+                <button onclick="plotFilterResponse()">Plot Response</button>
+                <div id="filterResults" class="results"></div>
+            </div>
+
+            <div class="container">
+                <h2>📡 Transmission Line Calculator</h2>
+                <div class="input-group">
+                    <label>Line Length (mm):</label>
+                    <input type="number" id="lineLength" value="37.5" step="0.1" min="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Characteristic Z (Ω):</label>
+                    <input type="number" id="lineZ0" value="50" step="1" min="1">
+                </div>
+                <div class="input-group">
+                    <label>Frequency (GHz):</label>
+                    <input type="number" id="lineFreq" value="2.0" step="0.1" min="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Load Z (Ω):</label>
+                    <input type="number" id="loadZ" value="100" step="1" min="1">
+                </div>
+                <div class="input-group">
+                    <label>Velocity Factor:</label>
+                    <input type="number" id="vf" value="1.0" step="0.01" min="0.1" max="1.0">
+                </div>
+                <button onclick="analyzeTLine()">Analyze Line</button>
+                <button onclick="calcQuarterWave()">λ/4 Transformer</button>
+                <div id="tlineResults" class="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Network Analysis Tab -->
+    <div id="analysis" class="tab-content">
+        <div class="main-container">
+            <div class="container">
+                <h2>🔧 Custom Network Builder</h2>
+                <div class="grid-2">
+                    <div class="input-group">
+                        <label>Component:</label>
+                        <select id="compType">
+                            <option value="seriesR">Series R</option>
+                            <option value="seriesL">Series L</option>
+                            <option value="seriesC">Series C</option>
+                            <option value="shuntR">Shunt R</option>
+                            <option value="shuntL">Shunt L</option>
+                            <option value="shuntC">Shunt C</option>
+                            <option value="tline">T-Line</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Value:</label>
+                        <input type="number" id="compValue" value="10" step="0.1">
+                    </div>
+                </div>
+                <div class="input-group">
+                    <label>Frequency (GHz):</label>
+                    <input type="number" id="compFreq" value="1.0" step="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Units:</label>
+                    <select id="compUnits">
+                        <option value="base">Ω / H / F / m</option>
+                        <option value="scaled">Ω / nH / pF / mm</option>
+                    </select>
+                </div>
+                <button onclick="addComponent()">Add Component</button>
+                <button onclick="clearNetwork()">Clear Network</button>
+                <button onclick="analyzeNetwork()">Analyze Network</button>
+                <button onclick="saveNetwork()">Save Network</button>
+                <button onclick="loadNetwork()">Load Network</button>
+                <div id="networkList" class="results"></div>
+                <div id="networkResults" class="results"></div>
+            </div>
+
+            <div class="container">
+                <h2>🎛️ Attenuator Designer</h2>
+                <div class="input-group">
+                    <label>Topology:</label>
+                    <select id="attenType">
+                        <option value="pi">Pi (π)</option>
+                        <option value="t">Tee (T)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Attenuation (dB):</label>
+                    <input type="number" id="attenValue" value="3.0" step="0.5" min="0.1">
+                </div>
+                <div class="input-group">
+                    <label>Impedance (Ω):</label>
+                    <input type="number" id="attenZ0" value="50" step="1" min="1">
+                </div>
+                <button onclick="designAttenuator()">Design Attenuator</button>
+                <div id="attenResults" class="results"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Frequency Sweep Tab -->
+    <div id="sweep" class="tab-content">
+        <div class="container">
+            <h2>📊 Frequency Sweep Analysis</h2>
+            <div class="grid-2">
+                <div>
+                    <div class="input-group">
+                        <label>Start Freq (GHz):</label>
+                        <input type="number" id="sweepStart" value="0.1" step="0.1" min="0.001">
+                    </div>
+                    <div class="input-group">
+                        <label>Stop Freq (GHz):</label>
+                        <input type="number" id="sweepStop" value="10" step="0.1" min="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Number of Points:</label>
+                        <input type="number" id="sweepPoints" value="201" step="10" min="10" max="1001">
+                    </div>
+                    <div class="input-group">
+                        <label>Sweep Type:</label>
+                        <select id="sweepType">
+                            <option value="linear">Linear</option>
+                            <option value="log">Logarithmic</option>
+                        </select>
+                    </div>
+                </div>
+                <div>
+                    <div class="input-group">
+                        <label>Network Type:</label>
+                        <select id="sweepNetwork">
+                            <option value="butterworth">Butterworth Filter</option>
+                            <option value="custom">Custom Network</option>
+                            <option value="tline">Transmission Line</option>
+                            <option value="attenuator">Attenuator</option>
+                        </select>
+                    </div>
+                    <div class="input-group">
+                        <label>Parameter 1:</label>
+                        <input type="number" id="sweepParam1" value="1.0" step="0.1">
+                    </div>
+                    <div class="input-group">
+                        <label>Parameter 2:</label>
+                        <input type="number" id="sweepParam2" value="50" step="1">
+                    </div>
+                    <div class="input-group">
+                        <label>Display:</label>
+                        <select id="sweepDisplay">
+                            <option value="s-params">S-Parameters</option>
+                            <option value="vswr">VSWR</option>
+                            <option value="impedance">Input Impedance</option>
+                            <option value="phase">Phase</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            <button onclick="runFrequencySweep()">Run Sweep</button>
+            <button onclick="exportSweepData()">Export Data</button>
+            <div id="sweepResults" class="results"></div>
+        </div>
+    </div>
+
+    <!-- Performance Tab -->
+    <div id="benchmark" class="tab-content">
+        <div class="container">
+            <h2>⚡ Performance Benchmarks</h2>
+            <p>Test the speed of cascadix WASM implementation with various circuit complexity levels.</p>
+            <div class="grid-2">
+                <div class="input-group">
+                    <label>Test Type:</label>
+                    <select id="benchType">
+                        <option value="cascade">Component Cascading</option>
+                        <option value="sweep">Frequency Sweep</option>
+                        <option value="sparams">S-Parameter Calc</option>
+                        <option value="comprehensive">Comprehensive</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Iterations:</label>
+                    <input type="number" id="benchIterations" value="1000" step="100" min="100">
+                </div>
+            </div>
+            <button onclick="runBenchmark()">Run Benchmark</button>
+            <button onclick="runAllBenchmarks()">Run All Tests</button>
+            <div id="benchmarkResults" class="results"></div>
+        </div>
+    </div>
+
+    <!-- Test Suite Tab -->
+    <div id="tests" class="tab-content">
+        <div class="test-suite">
+            <h2>🧪 Automated Test Suite</h2>
+            <button onclick="runTestSuite()">Run All Tests</button>
+            <button onclick="clearTestResults()">Clear Results</button>
+            <div id="testResults" class="results"></div>
+        </div>
+    </div>
+
+    <script>
+        let Module = null;
+        let networkComponents = [];
+        let sweepData = null;
+
+        // Initialize WASM module
+        function initModule() {
+            const script = document.createElement('script');
+            script.src = 'cascadix_wasm.js';
+            script.onload = function() {
+                CascadixModule().then(function(module) {
+                    Module = module;
+                    console.log('Cascadix WASM module loaded successfully');
+                    updateStatus('ready', 'Module ready');
+                    document.getElementById('filterResults').textContent = 'Module loaded. Ready to analyze!';
+                }).catch(function(error) {
+                    console.error('Failed to load module:', error);
+                    updateStatus('error', 'Failed to load module');
+                });
+            };
+            script.onerror = function() {
+                updateStatus('error', 'Failed to load script');
+            };
+            document.head.appendChild(script);
+        }
+
+        // Update status indicator
+        function updateStatus(status, text) {
+            const indicator = document.getElementById('statusIndicator');
+            const statusText = document.getElementById('statusText');
+            
+            indicator.className = 'status-indicator status-' + status;
+            statusText.textContent = text;
+        }
+
+        // Tab switching
+        function showTab(tabName) {
+            // Hide all tabs
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Show selected tab
+            document.getElementById(tabName).classList.add('active');
+            event.target.classList.add('active');
+        }
+
+        // Helper functions
+        function formatComplex(c) {
+            const real = c.real.toFixed(3);
+            const imag = c.imag.toFixed(3);
+            if (Math.abs(c.imag) < 0.001) {
+                return real;
+            }
+            return imag >= 0 ? `${real} + j${imag}` : `${real} - j${Math.abs(imag)}`;
+        }
+
+        function checkModule() {
+            if (!Module) {
+                return 'Module not loaded yet! Please wait...';
+            }
+            return null;
+        }
+
+        // Filter analysis
+        function analyzeFilter() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('filterResults').textContent = error;
+                return;
+            }
+
+            try {
+                const fc = parseFloat(document.getElementById('cutoff').value) * 1e9;
+                const z0 = parseFloat(document.getElementById('z0').value);
+                const testFreq = parseFloat(document.getElementById('testFreq').value) * 1e9;
+
+                // Create Butterworth filter
+                const filter = Module.butterworthLC3(fc, z0);
+
+                // Recreate at test frequency for analysis
+                const l_value = 0.7654 * z0 / (2 * Math.PI * fc);
+                const c_value = 1.8478 / (z0 * 2 * Math.PI * fc);
+                
+                const l1 = Module.seriesInductor(l_value, testFreq);
+                const c2 = Module.shuntCapacitor(c_value, testFreq);
+                const l3 = Module.seriesInductor(l_value, testFreq);
+                
+                const testFilter = Module.cascade(Module.cascade(l1, c2), l3);
+
+                // Get S-parameters
+                const s = Module.getSParameters(testFilter, z0);
+                
+                // Calculate metrics
+                const s11_mag = Math.sqrt(s.s11.real * s.s11.real + s.s11.imag * s.s11.imag);
+                const s21_mag = Math.sqrt(s.s21.real * s.s21.real + s.s21.imag * s.s21.imag);
+                const s11_db = 20 * Math.log10(s11_mag);
+                const s21_db = 20 * Math.log10(s21_mag);
+                const vswr = (1 + s11_mag) / (1 - s11_mag);
+
+                // Get input impedance
+                const z_in = Module.getInputImpedance(testFilter, {real: z0, imag: 0});
+
+                let results = `3rd Order Butterworth Lowpass Filter
+========================================
+Design Parameters:
+  Cutoff: ${(fc/1e9).toFixed(2)} GHz
+  System Z: ${z0} Ω
+  L1, L3: ${(l_value*1e9).toFixed(2)} nH
+  C2: ${(c_value*1e12).toFixed(2)} pF
+
+Analysis at ${(testFreq/1e9).toFixed(2)} GHz:
+  S11: ${formatComplex(s.s11)} (${s11_db.toFixed(2)} dB)
+  S21: ${formatComplex(s.s21)} (${s21_db.toFixed(2)} dB)
+  S12: ${formatComplex(s.s12)}
+  S22: ${formatComplex(s.s22)}
+  
+  VSWR: ${vswr.toFixed(2)}
+  Return Loss: ${(-s11_db).toFixed(2)} dB
+  Insertion Loss: ${(-s21_db).toFixed(2)} dB
+  Input Z: ${formatComplex(z_in)} Ω`;
+
+                document.getElementById('filterResults').textContent = results;
+                document.getElementById('filterResults').className = 'results success';
+            } catch (error) {
+                document.getElementById('filterResults').textContent = 'Error: ' + error.message;
+                document.getElementById('filterResults').className = 'results error';
+            }
+        }
+
+        // Transmission line analysis
+        function analyzeTLine() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('tlineResults').textContent = error;
+                return;
+            }
+
+            try {
+                const length = parseFloat(document.getElementById('lineLength').value) / 1000;
+                const z0 = parseFloat(document.getElementById('lineZ0').value);
+                const freq = parseFloat(document.getElementById('lineFreq').value) * 1e9;
+                const z_load = parseFloat(document.getElementById('loadZ').value);
+                const vf = parseFloat(document.getElementById('vf').value);
+
+                const tline = Module.transmissionLine(length, z0, freq);
+                const z_in = Module.getInputImpedance(tline, {real: z_load, imag: 0});
+                const s = Module.getSParameters(tline, z0);
+                
+                const wavelength = (299792458 * vf) / freq;
+                const electrical_length = (length / wavelength) * 360;
+
+                const s11_mag = Math.sqrt(s.s11.real * s.s11.real + s.s11.imag * s.s11.imag);
+                const s21_mag = Math.sqrt(s.s21.real * s.s21.real + s.s21.imag * s.s21.imag);
+                const s11_db = 20 * Math.log10(s11_mag);
+                const s21_db = 20 * Math.log10(s21_mag);
+
+                let results = `Transmission Line Analysis
+========================================
+Parameters:
+  Physical Length: ${(length*1000).toFixed(1)} mm
+  Electrical Length: ${electrical_length.toFixed(1)}°
+  Wavelength: ${(wavelength*1000).toFixed(1)} mm
+  Characteristic Z: ${z0} Ω
+  Frequency: ${(freq/1e9).toFixed(2)} GHz
+  Load Z: ${z_load} Ω
+  Velocity Factor: ${vf}
+
+Results:
+  Input Z: ${formatComplex(z_in)} Ω
+  Reflection Coeff: ${s11_mag.toFixed(3)} ∠ ${(Math.atan2(s.s11.imag, s.s11.real) * 180 / Math.PI).toFixed(1)}°
+  
+S-Parameters (${z0}Ω reference):
+  S11: ${s11_db.toFixed(2)} dB
+  S21: ${s21_db.toFixed(2)} dB
+  
+ABCD Matrix:
+  A: ${formatComplex(Module.getA(tline))}
+  B: ${formatComplex(Module.getB(tline))}
+  C: ${formatComplex(Module.getC(tline))}
+  D: ${formatComplex(Module.getD(tline))}`;
+
+                document.getElementById('tlineResults').textContent = results;
+                document.getElementById('tlineResults').className = 'results success';
+            } catch (error) {
+                document.getElementById('tlineResults').textContent = 'Error: ' + error.message;
+                document.getElementById('tlineResults').className = 'results error';
+            }
+        }
+
+        // Network builder functions
+        function addComponent() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('networkList').textContent = error;
+                return;
+            }
+
+            const type = document.getElementById('compType').value;
+            const value = parseFloat(document.getElementById('compValue').value);
+            const freq = parseFloat(document.getElementById('compFreq').value) * 1e9;
+            const units = document.getElementById('compUnits').value;
+
+            let component;
+            let description;
+            let actualValue = value;
+
+            if (units === 'scaled') {
+                switch(type) {
+                    case 'seriesL':
+                    case 'shuntL':
+                        actualValue = value * 1e-9; // nH to H
+                        break;
+                    case 'seriesC':
+                    case 'shuntC':
+                        actualValue = value * 1e-12; // pF to F
+                        break;
+                    case 'tline':
+                        actualValue = value / 1000; // mm to m
+                        break;
+                }
+            }
+
+            switch(type) {
+                case 'seriesR':
+                    component = Module.seriesResistor(actualValue);
+                    description = `Series R: ${value} Ω`;
+                    break;
+                case 'seriesL':
+                    component = Module.seriesInductor(actualValue, freq);
+                    description = `Series L: ${value} ${units === 'scaled' ? 'nH' : 'H'} @ ${(freq/1e9).toFixed(1)} GHz`;
+                    break;
+                case 'seriesC':
+                    component = Module.seriesCapacitor(actualValue, freq);
+                    description = `Series C: ${value} ${units === 'scaled' ? 'pF' : 'F'} @ ${(freq/1e9).toFixed(1)} GHz`;
+                    break;
+                case 'shuntR':
+                    component = Module.shuntResistor(actualValue);
+                    description = `Shunt R: ${value} Ω`;
+                    break;
+                case 'shuntL':
+                    component = Module.shuntInductor(actualValue, freq);
+                    description = `Shunt L: ${value} ${units === 'scaled' ? 'nH' : 'H'} @ ${(freq/1e9).toFixed(1)} GHz`;
+                    break;
+                case 'shuntC':
+                    component = Module.shuntCapacitor(actualValue, freq);
+                    description = `Shunt C: ${value} ${units === 'scaled' ? 'pF' : 'F'} @ ${(freq/1e9).toFixed(1)} GHz`;
+                    break;
+                case 'tline':
+                    component = Module.transmissionLine(actualValue, 50, freq);
+                    description = `T-Line: ${value} ${units === 'scaled' ? 'mm' : 'm'} @ ${(freq/1e9).toFixed(1)} GHz`;
+                    break;
+            }
+
+            networkComponents.push({comp: component, desc: description, freq: freq});
+            updateNetworkList();
+        }
+
+        function clearNetwork() {
+            networkComponents = [];
+            updateNetworkList();
+            document.getElementById('networkResults').textContent = '';
+        }
+
+        function updateNetworkList() {
+            let list = 'Network Components:\n' + '═'.repeat(40) + '\n';
+            if (networkComponents.length === 0) {
+                list = 'No components added yet';
+            } else {
+                networkComponents.forEach((item, index) => {
+                    list += `${(index + 1).toString().padStart(2)}. ${item.desc}\n`;
+                });
+            }
+            document.getElementById('networkList').textContent = list;
+        }
+
+        function analyzeNetwork() {
+            const error = checkModule();
+            if (error || networkComponents.length === 0) {
+                document.getElementById('networkResults').textContent = error || 'Add components first!';
+                return;
+            }
+
+            try {
+                let network = networkComponents[0].comp;
+                for (let i = 1; i < networkComponents.length; i++) {
+                    network = Module.cascade(network, networkComponents[i].comp);
+                }
+
+                const z0 = 50;
+                const s = Module.getSParameters(network, z0);
+                const z_in = Module.getInputImpedance(network, {real: z0, imag: 0});
+
+                const s11_mag = Math.sqrt(s.s11.real * s.s11.real + s.s11.imag * s.s11.imag);
+                const s21_mag = Math.sqrt(s.s21.real * s.s21.real + s.s21.imag * s.s21.imag);
+                const s11_db = 20 * Math.log10(s11_mag);
+                const s21_db = 20 * Math.log10(s21_mag);
+                const vswr = (1 + s11_mag) / (1 - s11_mag);
+
+                let results = `
+Network Analysis Results (${networkComponents.length} components)
+========================================
+S-Parameters (50Ω reference):
+  S11: ${s11_db.toFixed(2)} dB
+  S21: ${s21_db.toFixed(2)} dB
+  S12: ${20 * Math.log10(Math.sqrt(s.s12.real * s.s12.real + s.s12.imag * s.s12.imag)).toFixed(2)} dB
+  S22: ${20 * Math.log10(Math.sqrt(s.s22.real * s.s22.real + s.s22.imag * s.s22.imag)).toFixed(2)} dB
+  
+Performance Metrics:
+  VSWR: ${vswr.toFixed(2)}
+  Return Loss: ${(-s11_db).toFixed(2)} dB
+  Insertion Loss: ${(-s21_db).toFixed(2)} dB
+  
+Input Impedance (50Ω load): ${formatComplex(z_in)} Ω
+
+ABCD Matrix:
+  A: ${formatComplex(Module.getA(network))}
+  B: ${formatComplex(Module.getB(network))}
+  C: ${formatComplex(Module.getC(network))}
+  D: ${formatComplex(Module.getD(network))}
+  
+Network Properties:
+  Determinant: ${Module.determinant(network).toFixed(6)}
+  Reciprocal: ${Module.isReciprocal(network) ? 'Yes' : 'No'}
+  Symmetric: ${Module.isSymmetric(network) ? 'Yes' : 'No'}
+  Lossless: ${Module.isLossless(network) ? 'Yes' : 'No'}`;
+
+                document.getElementById('networkResults').textContent = results;
+                document.getElementById('networkResults').className = 'results success';
+            } catch (error) {
+                document.getElementById('networkResults').textContent = 'Error: ' + error.message;
+                document.getElementById('networkResults').className = 'results error';
+            }
+        }
+
+        // Attenuator designer
+        function designAttenuator() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('attenResults').textContent = error;
+                return;
+            }
+
+            try {
+                const type = document.getElementById('attenType').value;
+                const atten_db = parseFloat(document.getElementById('attenValue').value);
+                const z0 = parseFloat(document.getElementById('attenZ0').value);
+
+                let atten;
+                if (type === 'pi') {
+                    atten = Module.piAttenuator(atten_db, z0);
+                } else {
+                    atten = Module.tAttenuator(atten_db, z0);
+                }
+
+                const s = Module.getSParameters(atten, z0);
+                const s11_mag = Math.sqrt(s.s11.real * s.s11.real + s.s11.imag * s.s11.imag);
+                const s21_mag = Math.sqrt(s.s21.real * s.s21.real + s.s21.imag * s.s21.imag);
+                const s11_db = 20 * Math.log10(s11_mag);
+                const s21_db = 20 * Math.log10(s21_mag);
+                const vswr = (1 + s11_mag) / (1 - s11_mag);
+
+                // Calculate resistor values
+                const k = Math.pow(10, atten_db / 20);
+                let r1, r2;
+                
+                if (type === 'pi') {
+                    r1 = z0 * (k + 1) / (k - 1);
+                    r2 = z0 * (k * k - 1) / (2 * k);
+                    var topology = `Pi Attenuator Topology:
+    ─────R2─────
+    │         │
+   R1         R1
+    │         │
+    ─────────────`;
+                } else {
+                    r1 = z0 * (k - 1) / (k + 1);
+                    r2 = 2 * z0 * k / (k * k - 1);
+                    var topology = `Tee Attenuator Topology:
+    ───R1───R1───
+         │
+        R2
+         │
+    ─────────────`;
+                }
+
+                let results = `${type === 'pi' ? 'Pi (π)' : 'Tee (T)'} Attenuator Design
+========================================
+Specifications:
+  Attenuation: ${atten_db} dB
+  Impedance: ${z0} Ω
+
+Resistor Values:
+  R1: ${r1.toFixed(2)} Ω
+  R2: ${r2.toFixed(2)} Ω
+
+${topology}
+
+Actual Performance:
+  S11: ${s11_db.toFixed(3)} dB (Return Loss: ${(-s11_db).toFixed(2)} dB)
+  S21: ${s21_db.toFixed(3)} dB (Insertion Loss: ${(-s21_db).toFixed(2)} dB)
+  VSWR: ${vswr.toFixed(3)}
+  
+Verification:
+  Target Attenuation: ${atten_db} dB
+  Actual Attenuation: ${(-s21_db).toFixed(3)} dB
+  Error: ${Math.abs(atten_db + s21_db).toFixed(3)} dB`;
+
+                document.getElementById('attenResults').textContent = results;
+                document.getElementById('attenResults').className = 'results success';
+            } catch (error) {
+                document.getElementById('attenResults').textContent = 'Error: ' + error.message;
+                document.getElementById('attenResults').className = 'results error';
+            }
+        }
+
+        // Frequency sweep
+        function runFrequencySweep() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('sweepResults').textContent = error;
+                return;
+            }
+
+            try {
+                const startFreq = parseFloat(document.getElementById('sweepStart').value) * 1e9;
+                const stopFreq = parseFloat(document.getElementById('sweepStop').value) * 1e9;
+                const numPoints = parseInt(document.getElementById('sweepPoints').value);
+                const sweepType = document.getElementById('sweepType').value;
+                const networkType = document.getElementById('sweepNetwork').value;
+                const param1 = parseFloat(document.getElementById('sweepParam1').value);
+                const param2 = parseFloat(document.getElementById('sweepParam2').value);
+                const display = document.getElementById('sweepDisplay').value;
+
+                // Create frequency sweep
+                const sweepTypeEnum = sweepType === 'log' ? Module.SweepType.LOG : Module.SweepType.LINEAR;
+                const sweep = new Module.FrequencySweep(startFreq, stopFreq, numPoints, sweepTypeEnum);
+                const frequencies = sweep.getFrequencies();
+
+                sweepData = {
+                    frequencies: [],
+                    s11_db: [],
+                    s21_db: [],
+                    vswr: [],
+                    z_in: []
+                };
+
+                let results = `Frequency Sweep Results
+========================================
+Range: ${(startFreq/1e9).toFixed(3)} - ${(stopFreq/1e9).toFixed(3)} GHz
+Points: ${numPoints} (${sweepType})
+Network: ${networkType}
+
+`;
+
+                // Run sweep
+                for (let i = 0; i < frequencies.size(); i++) {
+                    const freq = frequencies.get(i);
+                    sweepData.frequencies.push(freq);
+
+                    let network;
+                    switch(networkType) {
+                        case 'butterworth':
+                            const fc = param1 * 1e9;
+                            const z0 = param2;
+                            const l_value = 0.7654 * z0 / (2 * Math.PI * fc);
+                            const c_value = 1.8478 / (z0 * 2 * Math.PI * fc);
+                            const l1 = Module.seriesInductor(l_value, freq);
+                            const c2 = Module.shuntCapacitor(c_value, freq);
+                            const l3 = Module.seriesInductor(l_value, freq);
+                            network = Module.cascade(Module.cascade(l1, c2), l3);
+                            break;
+                        case 'tline':
+                            network = Module.transmissionLine(param1 / 1000, param2, freq);
+                            break;
+                        case 'attenuator':
+                            network = Module.piAttenuator(param1, param2);
+                            break;
+                        case 'custom':
+                            if (networkComponents.length === 0) {
+                                throw new Error('No custom network defined');
+                            }
+                            network = networkComponents[0].comp;
+                            for (let j = 1; j < networkComponents.length; j++) {
+                                network = Module.cascade(network, networkComponents[j].comp);
+                            }
+                            break;
+                    }
+
+                    const s = Module.getSParameters(network, 50);
+                    const s11_mag = Math.sqrt(s.s11.real * s.s11.real + s.s11.imag * s.s11.imag);
+                    const s21_mag = Math.sqrt(s.s21.real * s.s21.real + s.s21.imag * s.s21.imag);
+                    
+                    sweepData.s11_db.push(20 * Math.log10(s11_mag));
+                    sweepData.s21_db.push(20 * Math.log10(s21_mag));
+                    sweepData.vswr.push((1 + s11_mag) / (1 - s11_mag));
+                    
+                    const z_in = Module.getInputImpedance(network, {real: 50, imag: 0});
+                    sweepData.z_in.push(z_in);
+                }
+
+                // Display results based on selection
+                const step = Math.max(1, Math.floor(numPoints / 20));
+                results += `Freq (GHz)  `;
+                
+                switch(display) {
+                    case 's-params':
+                        results += `S11 (dB)    S21 (dB)\n`;
+                        for (let i = 0; i < sweepData.frequencies.length; i += step) {
+                            results += `${(sweepData.frequencies[i]/1e9).toFixed(3).padStart(10)}  `;
+                            results += `${sweepData.s11_db[i].toFixed(2).padStart(10)}  `;
+                            results += `${sweepData.s21_db[i].toFixed(2).padStart(10)}\n`;
+                        }
+                        break;
+                    case 'vswr':
+                        results += `VSWR\n`;
+                        for (let i = 0; i < sweepData.frequencies.length; i += step) {
+                            results += `${(sweepData.frequencies[i]/1e9).toFixed(3).padStart(10)}  `;
+                            results += `${sweepData.vswr[i].toFixed(2).padStart(10)}\n`;
+                        }
+                        break;
+                    case 'impedance':
+                        results += `Input Z (Ω)\n`;
+                        for (let i = 0; i < sweepData.frequencies.length; i += step) {
+                            results += `${(sweepData.frequencies[i]/1e9).toFixed(3).padStart(10)}  `;
+                            results += `${formatComplex(sweepData.z_in[i]).padStart(20)}\n`;
+                        }
+                        break;
+                }
+
+                // Find key metrics
+                const minS11 = Math.min(...sweepData.s11_db);
+                const minS11Freq = sweepData.frequencies[sweepData.s11_db.indexOf(minS11)] / 1e9;
+                results += `\nKey Metrics:
+  Best Return Loss: ${(-minS11).toFixed(2)} dB @ ${minS11Freq.toFixed(3)} GHz`;
+
+                document.getElementById('sweepResults').textContent = results;
+                document.getElementById('sweepResults').className = 'results success';
+            } catch (error) {
+                document.getElementById('sweepResults').textContent = 'Error: ' + error.message;
+                document.getElementById('sweepResults').className = 'results error';
+            }
+        }
+
+        // Benchmarks
+        function runBenchmark() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('benchmarkResults').textContent = error;
+                return;
+            }
+
+            const benchType = document.getElementById('benchType').value;
+            const iterations = parseInt(document.getElementById('benchIterations').value);
+            
+            let results = `Performance Benchmark: ${benchType}
+========================================
+Iterations: ${iterations}
+`;
+            document.getElementById('benchmarkResults').textContent = results + '\nRunning...';
+
+            setTimeout(() => {
+                try {
+                    let start, end, duration;
+
+                    switch(benchType) {
+                        case 'cascade':
+                            // Warm up
+                            let chain = Module.seriesResistor(0.0);
+                            for (let i = 0; i < 100; i++) {
+                                const r = Module.seriesResistor(1.0);
+                                chain = Module.cascade(chain, r);
+                            }
+
+                            // Benchmark
+                            start = performance.now();
+                            chain = Module.seriesResistor(0.0);
+                            for (let i = 0; i < iterations; i++) {
+                                const r = Module.seriesResistor(1.0);
+                                chain = Module.cascade(chain, r);
+                            }
+                            end = performance.now();
+                            duration = end - start;
+                            
+                            results += `\nCascading ${iterations} resistors:
+  Time: ${duration.toFixed(2)} ms
+  Rate: ${(iterations / duration * 1000).toFixed(0)} components/second`;
+                            break;
+
+                        case 'sweep':
+                            // Frequency sweep with 30 components and 201 points
+                            const sweep = new Module.FrequencySweep(1e9, 10e9, 201, Module.SweepType.LINEAR);
+                            const frequencies = sweep.getFrequencies();
+                            
+                            start = performance.now();
+                            for (let iter = 0; iter < iterations / 100; iter++) {
+                                for (let f = 0; f < frequencies.size(); f++) {
+                                    const freq = frequencies.get(f);
+                                    let network = Module.seriesResistor(10.0);
+                                    
+                                    for (let i = 0; i < 10; i++) {
+                                        const r = Module.seriesResistor(5.0 + i);
+                                        const l = Module.seriesInductor((10 + i * 2) * 1e-9, freq);
+                                        const c = Module.shuntCapacitor((5 - i * 0.3) * 1e-12, freq);
+                                        
+                                        network = Module.cascade(network, r);
+                                        network = Module.cascade(network, l);
+                                        network = Module.cascade(network, c);
+                                    }
+                                    Module.getSParameters(network, 50.0);
+                                }
+                            }
+                            end = performance.now();
+                            duration = end - start;
+                            
+                            const numSweeps = iterations / 100;
+                            results += `\nFrequency Sweep (30 components × 201 points):
+  Total sweeps: ${numSweeps}
+  Time: ${duration.toFixed(2)} ms
+  Rate: ${(numSweeps / duration * 1000).toFixed(1)} sweeps/second
+  Per frequency point: ${(duration / (numSweeps * 201)).toFixed(3)} ms`;
+                            break;
+
+                        case 'sparams':
+                            const testNetwork = Module.piAttenuator(6.0, 50.0);
+                            
+                            start = performance.now();
+                            for (let i = 0; i < iterations; i++) {
+                                const s = Module.getSParameters(testNetwork, 50.0);
+                            }
+                            end = performance.now();
+                            duration = end - start;
+                            
+                            results += `\nS-Parameter Calculations:
+  Time: ${duration.toFixed(2)} ms
+  Rate: ${(iterations / duration * 1000).toFixed(0)} calculations/second
+  Average: ${(duration / iterations * 1000).toFixed(3)} μs per calculation`;
+                            break;
+
+                        case 'comprehensive':
+                            results += '\nRunning comprehensive benchmark suite...\n';
+                            
+                            // Test 1: Simple cascading
+                            start = performance.now();
+                            chain = Module.seriesResistor(0.0);
+                            for (let i = 0; i < 1000; i++) {
+                                const r = Module.seriesResistor(1.0);
+                                chain = Module.cascade(chain, r);
+                            }
+                            end = performance.now();
+                            results += `\n1. Cascaded 1000 resistors: ${(end - start).toFixed(2)} ms`;
+
+                            // Test 2: Frequency-dependent components
+                            start = performance.now();
+                            chain = Module.seriesResistor(0.0);
+                            for (let i = 0; i < 500; i++) {
+                                const l = Module.seriesInductor(1e-9, 2.4e9);
+                                chain = Module.cascade(chain, l);
+                            }
+                            end = performance.now();
+                            results += `\n2. Cascaded 500 inductors: ${(end - start).toFixed(2)} ms`;
+
+                            // Test 3: Complex filter creation
+                            start = performance.now();
+                            for (let i = 0; i < 100; i++) {
+                                const filter = Module.butterworthLC3(1e9, 50.0);
+                            }
+                            end = performance.now();
+                            results += `\n3. Created 100 Butterworth filters: ${(end - start).toFixed(2)} ms`;
+
+                            // Test 4: Frequency sweep
+                            const sweep2 = new Module.FrequencySweep(1e9, 10e9, 201, Module.SweepType.LINEAR);
+                            const frequencies2 = sweep2.getFrequencies();
+                            
+                            start = performance.now();
+                            for (let f = 0; f < frequencies2.size(); f++) {
+                                const freq = frequencies2.get(f);
+                                let network = Module.seriesResistor(10.0);
+                                for (let i = 0; i < 10; i++) {
+                                    const r = Module.seriesResistor(5.0 + i);
+                                    const l = Module.seriesInductor((10 + i * 2) * 1e-9, freq);
+                                    const c = Module.shuntCapacitor((5 - i * 0.3) * 1e-12, freq);
+                                    network = Module.cascade(network, r);
+                                    network = Module.cascade(network, l);
+                                    network = Module.cascade(network, c);
+                                }
+                                Module.getSParameters(network, 50.0);
+                            }
+                            end = performance.now();
+                            results += `\n4. Frequency sweep (30 components × 201 points): ${(end - start).toFixed(2)} ms`;
+
+                            results += `\n\n📊 Performance Summary:
+WebAssembly provides near-native speed for RF calculations!
+Complex cascaded networks can be analyzed in real-time.`;
+                            break;
+                    }
+
+                    document.getElementById('benchmarkResults').textContent = results;
+                    document.getElementById('benchmarkResults').className = 'results success';
+                } catch (error) {
+                    document.getElementById('benchmarkResults').textContent = 'Error: ' + error.message;
+                    document.getElementById('benchmarkResults').className = 'results error';
+                }
+            }, 100);
+        }
+
+        // Test suite
+        function runTestSuite() {
+            const error = checkModule();
+            if (error) {
+                document.getElementById('testResults').textContent = error;
+                return;
+            }
+
+            let results = 'Running Test Suite...\n' + '═'.repeat(50) + '\n\n';
+            let passed = 0;
+            let failed = 0;
+
+            // Test 1: Series Resistor
+            try {
+                const r = Module.seriesResistor(50.0);
+                const a = Module.getA(r);
+                const b = Module.getB(r);
+                if (Math.abs(a.real - 1.0) < 0.001 && Math.abs(b.real - 50.0) < 0.001) {
+                    results += '✅ Test 1: Series Resistor - PASSED\n';
+                    passed++;
+                } else {
+                    results += '❌ Test 1: Series Resistor - FAILED\n';
+                    failed++;
+                }
+            } catch (e) {
+                results += '❌ Test 1: Series Resistor - ERROR: ' + e.message + '\n';
+                failed++;
+            }
+
+            // Test 2: Cascading
+            try {
+                const r1 = Module.seriesResistor(25.0);
+                const r2 = Module.seriesResistor(25.0);
+                const cascade = Module.cascade(r1, r2);
+                const b = Module.getB(cascade);
+                if (Math.abs(b.real - 50.0) < 0.001) {
+                    results += '✅ Test 2: Cascading - PASSED\n';
+                    passed++;
+                } else {
+                    results += '❌ Test 2: Cascading - FAILED\n';
+                    failed++;
+                }
+            } catch (e) {
+                results += '❌ Test 2: Cascading - ERROR: ' + e.message + '\n';
+                failed++;
+            }
+
+            // Test 3: S-Parameters
+            try {
+                const r = Module.seriesResistor(50.0);
+                const s = Module.getSParameters(r, 50.0);
+                const s21_mag = Math.sqrt(s.s21.real * s.s21.real + s.s21.imag * s.s21.imag);
+                if (Math.abs(s21_mag - 0.5) < 0.001) {
+                    results += '✅ Test 3: S-Parameters - PASSED\n';
+                    passed++;
+                } else {
+                    results += '❌ Test 3: S-Parameters - FAILED\n';
+                    failed++;
+                }
+            } catch (e) {
+                results += '❌ Test 3: S-Parameters - ERROR: ' + e.message + '\n';
+                failed++;
+            }
+
+            // Test 4: Frequency Sweep
+            try {
+                const sweep = new Module.FrequencySweep(1e9, 2e9, 11, Module.SweepType.LINEAR);
+                const frequencies = sweep.getFrequencies();
+                if (frequencies.size() === 11) {
+                    results += '✅ Test 4: Frequency Sweep - PASSED\n';
+                    passed++;
+                } else {
+                    results += '❌ Test 4: Frequency Sweep - FAILED\n';
+                    failed++;
+                }
+            } catch (e) {
+                results += '❌ Test 4: Frequency Sweep - ERROR: ' + e.message + '\n';
+                failed++;
+            }
+
+            // Test 5: Butterworth Filter
+            try {
+                const filter = Module.butterworthLC3(1e9, 50.0);
+                if (filter) {
+                    results += '✅ Test 5: Butterworth Filter - PASSED\n';
+                    passed++;
+                } else {
+                    results += '❌ Test 5: Butterworth Filter - FAILED\n';
+                    failed++;
+                }
+            } catch (e) {
+                results += '❌ Test 5: Butterworth Filter - ERROR: ' + e.message + '\n';
+                failed++;
+            }
+
+            results += '\n' + '═'.repeat(50) + '\n';
+            results += `Test Results: ${passed} passed, ${failed} failed\n`;
+            results += `Success Rate: ${(passed / (passed + failed) * 100).toFixed(1)}%`;
+
+            document.getElementById('testResults').textContent = results;
+            document.getElementById('testResults').className = failed > 0 ? 'results error' : 'results success';
+        }
+
+        function clearTestResults() {
+            document.getElementById('testResults').textContent = '';
+        }
+
+        // Initialize on page load
+        window.onload = function() {
+            initModule();
+        };
+    </script>
+</body>
+</html>

@@ -7,8 +7,8 @@ using namespace cascadix;
 using complex = std::complex<double>;
 
 int main() {
-    std::cout << "Cascadix Library - Filter Design Example\n";
-    std::cout << "========================================\n\n";
+    std::cout << "Cascadix Library - Filter Design Example with Frequency Sweeps\n";
+    std::cout << "===============================================================\n\n";
     
     // Design parameters
     double fc = 1e9;  // 1 GHz cutoff
@@ -61,6 +61,50 @@ int main() {
     }
     
     std::cout << "\n";
+    
+    // NEW: Frequency sweep of the Butterworth filter
+    std::cout << "Frequency Sweep of Butterworth Filter\n";
+    std::cout << "=====================================\n";
+    
+    // Create a frequency sweep from 0.1 to 10 GHz
+    frequency_sweep sweep(0.1e9, 10e9, 50, sweep_type::LOG);
+    
+    // Create a network builder for the Butterworth filter
+    auto butterworth = make_butterworth_builder(fc, z0);
+    
+    // Perform the sweep
+    auto sweep_results = perform_sweep(butterworth, sweep, z0);
+    
+    // Display results at key frequencies
+    auto s21_db = sweep_results.get_s21_db();
+    auto s11_db = sweep_results.get_s11_db();
+    auto vswr = sweep_results.get_vswr();
+    
+    std::cout << std::setw(12) << "Freq (GHz)"
+              << std::setw(12) << "S11 (dB)"
+              << std::setw(12) << "S21 (dB)"
+              << std::setw(12) << "VSWR\n";
+    std::cout << std::string(48, '-') << "\n";
+    
+    // Display every 5th point for brevity
+    for (size_t i = 0; i < sweep_results.frequencies.size(); i += 5) {
+        std::cout << std::fixed << std::setprecision(3);
+        std::cout << std::setw(12) << sweep_results.frequencies[i] / 1e9
+                  << std::setw(12) << s11_db[i]
+                  << std::setw(12) << s21_db[i]
+                  << std::setw(12) << vswr[i] << "\n";
+    }
+    
+    // Find 3dB point
+    double cutoff_measured = 0;
+    for (size_t i = 0; i < s21_db.size(); ++i) {
+        if (s21_db[i] < -3.0) {
+            cutoff_measured = sweep_results.frequencies[i];
+            break;
+        }
+    }
+    std::cout << "\nMeasured 3dB cutoff: " << cutoff_measured / 1e9 << " GHz\n";
+    std::cout << "Design cutoff: " << fc / 1e9 << " GHz\n\n";
     
     // Example 2: Quarter-wave transformer
     std::cout << "Quarter-Wave Impedance Transformer\n";

@@ -6,6 +6,7 @@
 
 #include "two_port.h"
 #include "components.h"
+#include "frequency_sweep.h"
 
 // Additional utility functions can be declared here
 namespace cascadix {
