@@ -55,6 +55,10 @@ public:
     z_parameters to_z_parameters() const;
     y_parameters to_y_parameters() const;
     
+    // Static constructors from other parameter types
+    static two_port from_s_parameters(const s_parameters& s_params, double z0);
+    static two_port from_s_parameters(const s_parameters& s_params, const complex& z0);
+    
     // Voltage and current transfer functions
     complex voltage_gain(const complex& z_load) const;
     complex current_gain(const complex& z_load) const;

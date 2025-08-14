@@ -487,7 +487,15 @@
             const script = document.createElement('script');
             script.src = 'cascadix_wasm.js';
             script.onload = function() {
-                CascadixModule().then(function(module) {
+                CascadixModule({
+                    locateFile: function(path, prefix) {
+                        // Ensure WASM file is loaded from the correct location
+                        if (path.endsWith('.wasm')) {
+                            return path; // Use the same directory as the JS file
+                        }
+                        return prefix + path;
+                    }
+                }).then(function(module) {
                     Module = module;
                     console.log('Cascadix WASM module loaded successfully');
                     updateStatus('ready', 'Module ready');
@@ -1073,11 +1081,12 @@ Iterations: ${iterations}
                             // Frequency sweep with 30 components and 201 points
                             const sweep = new Module.FrequencySweep(1e9, 10e9, 201, Module.SweepType.LINEAR);
                             const frequencies = sweep.getFrequencies();
+                            const freqSize = (typeof frequencies.size === 'function') ? frequencies.size() : frequencies.length;
                             
                             start = performance.now();
                             for (let iter = 0; iter < iterations / 100; iter++) {
-                                for (let f = 0; f < frequencies.size(); f++) {
-                                    const freq = frequencies.get(f);
+                                for (let f = 0; f < freqSize; f++) {
+                                    const freq = (typeof frequencies.get === 'function') ? frequencies.get(f) : frequencies[f];
                                     let network = Module.seriesResistor(10.0);
                                     
                                     for (let i = 0; i < 10; i++) {
@@ -1096,11 +1105,11 @@ Iterations: ${iterations}
                             duration = end - start;
                             
                             const numSweeps = iterations / 100;
-                            results += `\nFrequency Sweep (30 components × 201 points):
+                            results += `\nFrequency Sweep (30 components × ${freqSize} points):
   Total sweeps: ${numSweeps}
   Time: ${duration.toFixed(2)} ms
   Rate: ${(numSweeps / duration * 1000).toFixed(1)} sweeps/second
-  Per frequency point: ${(duration / (numSweeps * 201)).toFixed(3)} ms`;
+  Per frequency point: ${(duration / (numSweeps * freqSize)).toFixed(3)} ms`;
                             break;
 
                         case 'sparams':
@@ -1124,7 +1133,7 @@ Iterations: ${iterations}
                             
                             // Test 1: Simple cascading
                             start = performance.now();
-                            chain = Module.seriesResistor(0.0);
+                            let chain = Module.seriesResistor(0.0);
                             for (let i = 0; i < 1000; i++) {
                                 const r = Module.seriesResistor(1.0);
                                 chain = Module.cascade(chain, r);
@@ -1153,10 +1162,11 @@ Iterations: ${iterations}
                             // Test 4: Frequency sweep
                             const sweep2 = new Module.FrequencySweep(1e9, 10e9, 201, Module.SweepType.LINEAR);
                             const frequencies2 = sweep2.getFrequencies();
+                            const freqSize2 = (typeof frequencies2.size === 'function') ? frequencies2.size() : frequencies2.length;
                             
                             start = performance.now();
-                            for (let f = 0; f < frequencies2.size(); f++) {
-                                const freq = frequencies2.get(f);
+                            for (let f = 0; f < freqSize2; f++) {
+                                const freq = (typeof frequencies2.get === 'function') ? frequencies2.get(f) : frequencies2[f];
                                 let network = Module.seriesResistor(10.0);
                                 for (let i = 0; i < 10; i++) {
                                     const r = Module.seriesResistor(5.0 + i);
@@ -1169,7 +1179,7 @@ Iterations: ${iterations}
                                 Module.getSParameters(network, 50.0);
                             }
                             end = performance.now();
-                            results += `\n4. Frequency sweep (30 components × 201 points): ${(end - start).toFixed(2)} ms`;
+                            results += `\n4. Frequency sweep (30 components × ${freqSize2} points): ${(end - start).toFixed(2)} ms`;
 
                             results += `\n\n📊 Performance Summary:
 WebAssembly provides near-native speed for RF calculations!
@@ -1254,11 +1264,14 @@ Complex cascaded networks can be analyzed in real-time.`;
             try {
                 const sweep = new Module.FrequencySweep(1e9, 2e9, 11, Module.SweepType.LINEAR);
                 const frequencies = sweep.getFrequencies();
-                if (frequencies.size() === 11) {
+                // Check if frequencies is a registered vector with size() method
+                const hasSize = (typeof frequencies.size === 'function');
+                const actualSize = hasSize ? frequencies.size() : frequencies.length;
+                if (actualSize === 11) {
                     results += '✅ Test 4: Frequency Sweep - PASSED\n';
                     passed++;
                 } else {
-                    results += '❌ Test 4: Frequency Sweep - FAILED\n';
+                    results += `❌ Test 4: Frequency Sweep - FAILED (size: ${actualSize}, has size(): ${hasSize})\n`;
                     failed++;
                 }
             } catch (e) {

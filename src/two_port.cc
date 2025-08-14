@@ -134,6 +134,35 @@ y_parameters two_port::to_y_parameters() const {
     return y_parameters(y11, y12, y21, y22);
 }
 
+// Convert from S-parameters with real reference impedance
+two_port two_port::from_s_parameters(const s_parameters& s_params, double z0) {
+    return from_s_parameters(s_params, complex(z0, 0.0));
+}
+
+// Convert from S-parameters with complex reference impedance
+two_port two_port::from_s_parameters(const s_parameters& s_params, const complex& z0) {
+    complex s11 = s_params.s11;
+    complex s12 = s_params.s12;
+    complex s21 = s_params.s21;
+    complex s22 = s_params.s22;
+    
+    // Check for division by zero
+    if (std::abs(s21) < 1e-20) {
+        throw std::runtime_error("S-to-ABCD conversion: S21 is zero");
+    }
+    
+    // S-parameter determinant
+    complex delta = s11 * s22 - s12 * s21;
+    
+    // Convert using formulas from FORMULAS.md section 7.4
+    complex a = ((1.0 + s11) * (1.0 - s22) + s12 * s21) / (2.0 * s21);
+    complex b = z0 * ((1.0 + s11) * (1.0 + s22) - s12 * s21) / (2.0 * s21);
+    complex c = ((1.0 - s11) * (1.0 - s22) - s12 * s21) / (2.0 * s21 * z0);
+    complex d = ((1.0 - s11) * (1.0 + s22) + s12 * s21) / (2.0 * s21);
+    
+    return two_port(a, b, c, d);
+}
+
 // Calculate voltage transfer function
 complex two_port::voltage_gain(const complex& z_load) const {
     complex denominator = m_abcd[0] + m_abcd[1] / z_load;

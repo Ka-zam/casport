@@ -203,6 +203,186 @@ private:
     double m_alpha;   // Attenuation constant in Nepers/meter
 };
 
+// Series open stub (transmission line with open termination in series)
+class series_open_stub : public frequency_dependent_two_port {
+public:
+    series_open_stub(double length, double z0, double freq, double vf = 1.0)
+        : frequency_dependent_two_port(freq), m_length(length), m_z0(z0), m_vf(vf) {
+        // Open circuit termination: Z_load = infinity
+        // Input impedance of open-ended transmission line: Z_in = -j*Z0*cot(βl)
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        complex z_in(0.0, -m_z0 / std::tan(beta_l));  // -j*Z0*cot(βl)
+        m_abcd = {1.0, z_in, 0.0, 1.0};  // Series impedance matrix
+    }
+    
+    double length() const { return m_length; }
+    double characteristic_impedance() const { return m_z0; }
+    double velocity_factor() const { return m_vf; }
+    complex input_impedance() const {
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        return complex(0.0, -m_z0 / std::tan(beta_l));
+    }
+    
+private:
+    double m_length;
+    double m_z0;
+    double m_vf;
+};
+
+// Series short stub (transmission line with short termination in series)
+class series_short_stub : public frequency_dependent_two_port {
+public:
+    series_short_stub(double length, double z0, double freq, double vf = 1.0)
+        : frequency_dependent_two_port(freq), m_length(length), m_z0(z0), m_vf(vf) {
+        // Short circuit termination: Z_load = 0
+        // Input impedance of short-ended transmission line: Z_in = j*Z0*tan(βl)
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        complex z_in(0.0, m_z0 * std::tan(beta_l));  // j*Z0*tan(βl)
+        m_abcd = {1.0, z_in, 0.0, 1.0};  // Series impedance matrix
+    }
+    
+    double length() const { return m_length; }
+    double characteristic_impedance() const { return m_z0; }
+    double velocity_factor() const { return m_vf; }
+    complex input_impedance() const {
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        return complex(0.0, m_z0 * std::tan(beta_l));
+    }
+    
+private:
+    double m_length;
+    double m_z0;
+    double m_vf;
+};
+
+// Shunt open stub (transmission line with open termination to ground)
+class shunt_open_stub : public frequency_dependent_two_port {
+public:
+    shunt_open_stub(double length, double z0, double freq, double vf = 1.0)
+        : frequency_dependent_two_port(freq), m_length(length), m_z0(z0), m_vf(vf) {
+        // Open circuit termination: Z_load = infinity
+        // Input impedance: Z_in = -j*Z0*cot(βl)
+        // Input admittance: Y_in = 1/Z_in = j*tan(βl)/Z0
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        complex y_in(0.0, std::tan(beta_l) / m_z0);  // j*tan(βl)/Z0
+        m_abcd = {1.0, 0.0, y_in, 1.0};  // Shunt admittance matrix
+    }
+    
+    double length() const { return m_length; }
+    double characteristic_impedance() const { return m_z0; }
+    double velocity_factor() const { return m_vf; }
+    complex input_impedance() const {
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        return complex(0.0, -m_z0 / std::tan(beta_l));
+    }
+    complex input_admittance() const {
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        return complex(0.0, std::tan(beta_l) / m_z0);
+    }
+    
+private:
+    double m_length;
+    double m_z0;
+    double m_vf;
+};
+
+// Shunt short stub (transmission line with short termination to ground)
+class shunt_short_stub : public frequency_dependent_two_port {
+public:
+    shunt_short_stub(double length, double z0, double freq, double vf = 1.0)
+        : frequency_dependent_two_port(freq), m_length(length), m_z0(z0), m_vf(vf) {
+        // Short circuit termination: Z_load = 0
+        // Input impedance: Z_in = j*Z0*tan(βl)
+        // Input admittance: Y_in = 1/Z_in = -j*cot(βl)/Z0
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        complex y_in(0.0, -1.0 / (m_z0 * std::tan(beta_l)));  // -j*cot(βl)/Z0
+        m_abcd = {1.0, 0.0, y_in, 1.0};  // Shunt admittance matrix
+    }
+    
+    double length() const { return m_length; }
+    double characteristic_impedance() const { return m_z0; }
+    double velocity_factor() const { return m_vf; }
+    complex input_impedance() const {
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        return complex(0.0, m_z0 * std::tan(beta_l));
+    }
+    complex input_admittance() const {
+        double beta = m_omega * std::sqrt(MU0 * EPS0) / m_vf;
+        double beta_l = beta * m_length;
+        return complex(0.0, -1.0 / (m_z0 * std::tan(beta_l)));
+    }
+    
+private:
+    double m_length;
+    double m_z0;
+    double m_vf;
+};
+
+// Shunt tee - creates a shunt connection from any two_port network
+class shunt_tee : public two_port {
+public:
+    // Constructor with arbitrary termination impedance
+    shunt_tee(const two_port& shunt_network, const complex& termination_impedance)
+        : m_shunt_network(shunt_network), m_termination(termination_impedance) {
+        // Calculate input impedance of the shunt network with given termination
+        complex z_shunt = m_shunt_network.input_impedance(m_termination);
+        
+        // Convert to admittance (handle infinite impedance case)
+        complex y_shunt;
+        if (std::abs(z_shunt) < 1e-20) {
+            y_shunt = complex(1e20, 0.0);  // Very high admittance for short circuit
+        } else {
+            y_shunt = 1.0 / z_shunt;
+        }
+        
+        // Create ABCD matrix for shunt admittance
+        m_abcd = {1.0, 0.0, y_shunt, 1.0};
+    }
+    
+    // Convenience constructors
+    static shunt_tee short_terminated(const two_port& network) {
+        return shunt_tee(network, complex(0.0, 0.0));
+    }
+    
+    static shunt_tee open_terminated(const two_port& network) {
+        return shunt_tee(network, complex(1e12, 0.0));  // Very high impedance for open
+    }
+    
+    static shunt_tee match_terminated(const two_port& network, double z0) {
+        return shunt_tee(network, complex(z0, 0.0));
+    }
+    
+    // Accessors
+    const two_port& shunt_network() const { return m_shunt_network; }
+    complex termination_impedance() const { return m_termination; }
+    
+    // Calculate the effective shunt impedance
+    complex shunt_impedance() const {
+        return m_shunt_network.input_impedance(m_termination);
+    }
+    
+    complex shunt_admittance() const {
+        complex z = shunt_impedance();
+        if (std::abs(z) < 1e-20) {
+            return complex(1e20, 0.0);
+        }
+        return 1.0 / z;
+    }
+    
+private:
+    two_port m_shunt_network;
+    complex m_termination;
+};
+
 // Ideal transformer
 class ideal_transformer : public two_port {
 public:
@@ -303,6 +483,84 @@ inline two_port make_tline(double length, double z0, double freq) {
 
 inline two_port make_quarter_wave_tline(double z0, double freq) {
     return transmission_line::from_electrical_length(90.0, z0, freq);
+}
+
+// Stub factory functions
+inline two_port make_series_open_stub(double length, double z0, double freq, double vf = 1.0) {
+    return series_open_stub(length, z0, freq, vf);
+}
+
+inline two_port make_series_short_stub(double length, double z0, double freq, double vf = 1.0) {
+    return series_short_stub(length, z0, freq, vf);
+}
+
+inline two_port make_shunt_open_stub(double length, double z0, double freq, double vf = 1.0) {
+    return shunt_open_stub(length, z0, freq, vf);
+}
+
+inline two_port make_shunt_short_stub(double length, double z0, double freq, double vf = 1.0) {
+    return shunt_short_stub(length, z0, freq, vf);
+}
+
+// Quarter-wave stub variants
+inline two_port make_quarter_wave_series_open_stub(double z0, double freq, double vf = 1.0) {
+    double wavelength = C0 / (freq * vf);
+    double length = wavelength / 4.0;
+    return series_open_stub(length, z0, freq, vf);
+}
+
+inline two_port make_quarter_wave_series_short_stub(double z0, double freq, double vf = 1.0) {
+    double wavelength = C0 / (freq * vf);
+    double length = wavelength / 4.0;
+    return series_short_stub(length, z0, freq, vf);
+}
+
+inline two_port make_quarter_wave_shunt_open_stub(double z0, double freq, double vf = 1.0) {
+    double wavelength = C0 / (freq * vf);
+    double length = wavelength / 4.0;
+    return shunt_open_stub(length, z0, freq, vf);
+}
+
+inline two_port make_quarter_wave_shunt_short_stub(double z0, double freq, double vf = 1.0) {
+    double wavelength = C0 / (freq * vf);
+    double length = wavelength / 4.0;
+    return shunt_short_stub(length, z0, freq, vf);
+}
+
+// Shunt tee factory functions
+inline two_port make_shunt_tee(const two_port& network, const complex& termination = complex(0.0, 0.0)) {
+    return shunt_tee(network, termination);
+}
+
+inline two_port make_shunt_tee_short(const two_port& network) {
+    return shunt_tee::short_terminated(network);
+}
+
+inline two_port make_shunt_tee_open(const two_port& network) {
+    return shunt_tee::open_terminated(network);
+}
+
+inline two_port make_shunt_tee_match(const two_port& network, double z0) {
+    return shunt_tee::match_terminated(network, z0);
+}
+
+// Build shunt stubs from transmission lines using shunt_tee
+inline two_port make_shunt_stub_from_tline(double length, double z0, double freq, 
+                                          const complex& termination = complex(0.0, 0.0), 
+                                          double vf = 1.0) {
+    auto tline = transmission_line(length, z0, freq, vf);
+    return shunt_tee(tline, termination);
+}
+
+// Convenience functions for common stub terminations using shunt_tee
+inline two_port make_shunt_tee_short_stub(double length, double z0, double freq, double vf = 1.0) {
+    auto tline = transmission_line(length, z0, freq, vf);
+    return shunt_tee::short_terminated(tline);
+}
+
+inline two_port make_shunt_tee_open_stub(double length, double z0, double freq, double vf = 1.0) {
+    auto tline = transmission_line(length, z0, freq, vf);
+    return shunt_tee::open_terminated(tline);
 }
 
 } // namespace cascadix

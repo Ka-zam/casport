@@ -5,11 +5,11 @@
 The ABCD matrix, also known as the chain matrix or transmission matrix, relates the input voltage and current to the output voltage and current of a 2-port network:
 
 ```
-┌────┐   ┌───┐   ┌────┐
+┌────┐   ┌─────┐   ┌────┐
 │ V₁ │   │ A B │   │ V₂ │
 │    │ = │     │ × │    │
 │ I₁ │   │ C D │   │-I₂ │
-└────┘   └───┘   └────┘
+└────┘   └─────┘   └────┘
 ```
 
 Note the negative sign on I₂, which follows the convention that current flows into both ports.

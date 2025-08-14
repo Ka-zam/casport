@@ -1,5 +1,6 @@
 #include <emscripten/bind.h>
 #include "../include/cascadix.h"
+#include "../include/smith_chart_generator.h"
 
 using namespace emscripten;
 using namespace cascadix;
@@ -76,6 +77,180 @@ two_port create_ideal_transformer(double turns_ratio) {
     return ideal_transformer(turns_ratio);
 }
 
+// Stub functions
+two_port create_series_open_stub(double length, double z0, double freq) {
+    return series_open_stub(length, z0, freq);
+}
+
+two_port create_series_short_stub(double length, double z0, double freq) {
+    return series_short_stub(length, z0, freq);
+}
+
+two_port create_shunt_open_stub(double length, double z0, double freq) {
+    return shunt_open_stub(length, z0, freq);
+}
+
+two_port create_shunt_short_stub(double length, double z0, double freq) {
+    return shunt_short_stub(length, z0, freq);
+}
+
+// Quarter-wave stubs
+two_port create_quarter_wave_series_open_stub(double z0, double freq) {
+    return make_quarter_wave_series_open_stub(z0, freq);
+}
+
+two_port create_quarter_wave_series_short_stub(double z0, double freq) {
+    return make_quarter_wave_series_short_stub(z0, freq);
+}
+
+two_port create_quarter_wave_shunt_open_stub(double z0, double freq) {
+    return make_quarter_wave_shunt_open_stub(z0, freq);
+}
+
+two_port create_quarter_wave_shunt_short_stub(double z0, double freq) {
+    return make_quarter_wave_shunt_short_stub(z0, freq);
+}
+
+// S-parameters to ABCD conversion
+two_port create_from_s_parameters(const s_params_wrapper& s, double z0) {
+    s_parameters s_params(s.s11.to_complex(), s.s12.to_complex(),
+                         s.s21.to_complex(), s.s22.to_complex());
+    return two_port::from_s_parameters(s_params, z0);
+}
+
+// Shunt tee functions
+two_port create_shunt_tee(const two_port& network, const complex_wrapper& termination) {
+    return shunt_tee(network, termination.to_complex());
+}
+
+two_port create_shunt_tee_short(const two_port& network) {
+    return shunt_tee::short_terminated(network);
+}
+
+two_port create_shunt_tee_open(const two_port& network) {
+    return shunt_tee::open_terminated(network);
+}
+
+two_port create_shunt_tee_match(const two_port& network, double z0) {
+    return shunt_tee::match_terminated(network, z0);
+}
+
+// Shunt stub from transmission line using shunt_tee
+two_port create_shunt_stub_from_tline(double length, double z0, double freq, 
+                                    const complex_wrapper& termination) {
+    auto tline = transmission_line(length, z0, freq);
+    return shunt_tee(tline, termination.to_complex());
+}
+
+two_port create_shunt_tee_short_stub(double length, double z0, double freq) {
+    return make_shunt_tee_short_stub(length, z0, freq);
+}
+
+two_port create_shunt_tee_open_stub(double length, double z0, double freq) {
+    return make_shunt_tee_open_stub(length, z0, freq);
+}
+
+// Smith chart point generation functions
+emscripten::val generate_network_sweep_points(const two_port& network, 
+                                            double start_freq, double stop_freq, 
+                                            int num_points, double z0) {
+    frequency_sweep sweep(start_freq, stop_freq, num_points, sweep_type::LOG);
+    smith_chart_generator generator;
+    auto points = generator.generate_sweep_points(network, sweep, z0, z0);
+    
+    return emscripten::val(emscripten::typed_memory_view(points.size(), points.data()));
+}
+
+emscripten::val generate_network_sweep_points_with_config(const two_port& network,
+                                                        double start_freq, double stop_freq,
+                                                        int num_points, double z0,
+                                                        double min_spacing, double max_spacing,
+                                                        double edge_boost) {
+    frequency_sweep sweep(start_freq, stop_freq, num_points, sweep_type::LOG);
+    smith_chart_config config(min_spacing, max_spacing, edge_boost);
+    smith_chart_generator generator(config);
+    auto points = generator.generate_sweep_points(network, sweep, z0, z0);
+    
+    return emscripten::val(emscripten::typed_memory_view(points.size(), points.data()));
+}
+
+emscripten::val impedances_to_smith_points(emscripten::val impedances_array, double z0) {
+    // Convert JavaScript array to C++ vector
+    std::vector<complex> impedances;
+    int length = impedances_array["length"].as<int>();
+    
+    for (int i = 0; i < length; i += 2) {
+        double real_part = impedances_array[i].as<double>();
+        double imag_part = impedances_array[i + 1].as<double>();
+        impedances.emplace_back(real_part, imag_part);
+    }
+    
+    smith_chart_generator generator;
+    auto points = generator.impedances_to_smith_points(impedances, z0);
+    
+    return emscripten::val(emscripten::typed_memory_view(points.size(), points.data()));
+}
+
+emscripten::val generate_monte_carlo_samples(std::function<two_port(emscripten::val)> network_builder,
+                                           emscripten::val component_values,
+                                           emscripten::val tolerances,
+                                           int num_samples,
+                                           double frequency,
+                                           double load_impedance,
+                                           double z0) {
+    // Convert JavaScript arrays
+    std::vector<double> nominal_values;
+    std::vector<double> tolerance_percents;
+    
+    int num_components = component_values["length"].as<int>();
+    for (int i = 0; i < num_components; i++) {
+        nominal_values.push_back(component_values[i].as<double>());
+        tolerance_percents.push_back(tolerances[i].as<double>());
+    }
+    
+    // Create component variations
+    std::vector<monte_carlo_sampler::component_variation> variations;
+    for (size_t i = 0; i < nominal_values.size(); i++) {
+        monte_carlo_sampler::component_variation var;
+        var.nominal_value = nominal_values[i];
+        var.tolerance_percent = tolerance_percents[i];
+        var.distribution = monte_carlo_sampler::component_variation::GAUSSIAN;
+        variations.push_back(var);
+    }
+    
+    // Create network builder that works with C++ vectors
+    auto cpp_network_builder = [&](const std::vector<double>& values) -> two_port {
+        emscripten::val js_values = emscripten::val::array();
+        for (size_t i = 0; i < values.size(); i++) {
+            js_values.set(i, values[i]);
+        }
+        return network_builder(js_values);
+    };
+    
+    // Generate Monte Carlo samples
+    monte_carlo_sampler sampler;
+    auto impedances = sampler.generate_impedance_samples(
+        cpp_network_builder, variations, num_samples, frequency, complex(load_impedance, 0.0));
+    
+    // Convert to Smith chart points
+    smith_chart_generator generator;
+    auto points = generator.impedances_to_smith_points(impedances, z0);
+    
+    return emscripten::val(emscripten::typed_memory_view(points.size(), points.data()));
+}
+
+complex_wrapper impedance_to_reflection_wrapper(const complex_wrapper& impedance, double z0) {
+    complex z = impedance.to_complex();
+    complex gamma = smith_chart_generator::impedance_to_reflection(z, z0);
+    return complex_wrapper(gamma);
+}
+
+complex_wrapper reflection_to_impedance_wrapper(const complex_wrapper& reflection, double z0) {
+    complex gamma = reflection.to_complex();
+    complex z = smith_chart_generator::reflection_to_impedance(gamma, z0);
+    return complex_wrapper(z);
+}
+
 // Cascade operation
 two_port cascade_networks(const two_port& tp1, const two_port& tp2) {
     return tp1 * tp2;
@@ -123,6 +298,36 @@ EMSCRIPTEN_BINDINGS(cascadix_module) {
     function("transmissionLine", &create_transmission_line);
     function("quarterWaveLine", &create_quarter_wave_line);
     function("idealTransformer", &create_ideal_transformer);
+    
+    // Stub functions
+    function("seriesOpenStub", &create_series_open_stub);
+    function("seriesShortStub", &create_series_short_stub);
+    function("shuntOpenStub", &create_shunt_open_stub);
+    function("shuntShortStub", &create_shunt_short_stub);
+    function("quarterWaveSeriesOpenStub", &create_quarter_wave_series_open_stub);
+    function("quarterWaveSeriesShortStub", &create_quarter_wave_series_short_stub);
+    function("quarterWaveShuntOpenStub", &create_quarter_wave_shunt_open_stub);
+    function("quarterWaveShuntShortStub", &create_quarter_wave_shunt_short_stub);
+    
+    // Conversion functions
+    function("fromSParameters", &create_from_s_parameters);
+    
+    // Shunt tee functions
+    function("shuntTee", &create_shunt_tee);
+    function("shuntTeeShort", &create_shunt_tee_short);
+    function("shuntTeeOpen", &create_shunt_tee_open);
+    function("shuntTeeMatch", &create_shunt_tee_match);
+    function("shuntStubFromTline", &create_shunt_stub_from_tline);
+    function("shuntTeeShortStub", &create_shunt_tee_short_stub);
+    function("shuntTeeOpenStub", &create_shunt_tee_open_stub);
+    
+    // Smith chart point generation
+    function("generateNetworkSweepPoints", &generate_network_sweep_points);
+    function("generateNetworkSweepPointsWithConfig", &generate_network_sweep_points_with_config);
+    function("impedancesToSmithPoints", &impedances_to_smith_points);
+    function("generateMonteCarloSamples", &generate_monte_carlo_samples);
+    function("impedanceToReflection", &impedance_to_reflection_wrapper);
+    function("reflectionToImpedance", &reflection_to_impedance_wrapper);
     
     // Operations
     function("cascade", &cascade_networks);

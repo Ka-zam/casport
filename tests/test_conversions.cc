@@ -201,3 +201,81 @@ TEST(ConversionsTest, RoundTripConversions) {
     auto y = network.to_y_parameters();
     EXPECT_TRUE(complex_near(y.y12, y.y21));  // Reciprocal
 }
+
+// Test S-parameters to ABCD conversion
+TEST(ConversionsTest, SparamsToABCD) {
+    // Create a known two-port (series 50Ω resistor)
+    two_port original = series_resistor(50.0);
+    double z0 = 50.0;
+    
+    // Convert to S-parameters
+    auto s = original.to_s_parameters(z0);
+    
+    // Convert back to ABCD
+    two_port converted = two_port::from_s_parameters(s, z0);
+    
+    // Should match original ABCD matrix
+    EXPECT_TRUE(complex_near(original.a(), converted.a(), 1e-10));
+    EXPECT_TRUE(complex_near(original.b(), converted.b(), 1e-10));
+    EXPECT_TRUE(complex_near(original.c(), converted.c(), 1e-10));
+    EXPECT_TRUE(complex_near(original.d(), converted.d(), 1e-10));
+}
+
+// Test S-parameters to ABCD conversion for reactive element
+TEST(ConversionsTest, SparamsToABCDReactive) {
+    double freq = 1e9;
+    two_port original = series_inductor(10e-9, freq);  // 10nH at 1GHz
+    double z0 = 50.0;
+    
+    // Convert to S-parameters
+    auto s = original.to_s_parameters(z0);
+    
+    // Convert back to ABCD
+    two_port converted = two_port::from_s_parameters(s, z0);
+    
+    // Should match original ABCD matrix
+    EXPECT_TRUE(complex_near(original.a(), converted.a(), 1e-10));
+    EXPECT_TRUE(complex_near(original.b(), converted.b(), 1e-10));
+    EXPECT_TRUE(complex_near(original.c(), converted.c(), 1e-10));
+    EXPECT_TRUE(complex_near(original.d(), converted.d(), 1e-10));
+}
+
+// Test S-parameters to ABCD conversion with complex reference impedance
+TEST(ConversionsTest, SparamsToABCDComplexZ0) {
+    two_port original = shunt_capacitor(1e-12, 2e9);  // 1pF at 2GHz
+    complex z0(50.0, 10.0);  // Complex reference impedance
+    
+    // Convert to S-parameters
+    auto s = original.to_s_parameters(z0);
+    
+    // Convert back to ABCD
+    two_port converted = two_port::from_s_parameters(s, z0);
+    
+    // Should match original ABCD matrix
+    EXPECT_TRUE(complex_near(original.a(), converted.a(), 1e-10));
+    EXPECT_TRUE(complex_near(original.b(), converted.b(), 1e-10));
+    EXPECT_TRUE(complex_near(original.c(), converted.c(), 1e-10));
+    EXPECT_TRUE(complex_near(original.d(), converted.d(), 1e-10));
+}
+
+// Test reciprocity preservation in S->ABCD conversion
+TEST(ConversionsTest, SparamsToABCDReciprocity) {
+    // Create a cascaded network
+    double freq = 1.5e9;
+    auto l1 = series_inductor(5e-9, freq);
+    auto c1 = shunt_capacitor(2e-12, freq);
+    auto r1 = series_resistor(25.0);
+    
+    two_port original = l1 * c1 * r1;
+    double z0 = 50.0;
+    
+    // Original should be reciprocal
+    EXPECT_TRUE(original.is_reciprocal(1e-10));
+    
+    // Convert to S-parameters and back
+    auto s = original.to_s_parameters(z0);
+    two_port converted = two_port::from_s_parameters(s, z0);
+    
+    // Should still be reciprocal
+    EXPECT_TRUE(converted.is_reciprocal(1e-10));
+}

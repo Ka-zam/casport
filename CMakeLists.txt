@@ -36,6 +36,7 @@ include_directories(${CMAKE_SOURCE_DIR}/include)
 set(CASCADIX_SOURCES
     src/two_port.cc
     src/components.cc
+    src/smith_chart_generator.cc
 )
 
 # Create library
@@ -85,8 +86,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     add_executable(test_frequency_sweep tests/test_frequency_sweep.cc)
     target_link_libraries(test_frequency_sweep ${PROJECT_NAME} gtest_main)
     
-    add_executable(test_smith_chart tests/test_smith_chart.cc)
-    target_link_libraries(test_smith_chart ${PROJECT_NAME} gtest_main)
+    add_executable(test_smith_chart_generator tests/test_smith_chart_generator.cc)
+    target_link_libraries(test_smith_chart_generator ${PROJECT_NAME} gtest_main)
     
     # Add tests
     include(GoogleTest)
@@ -94,7 +95,7 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     gtest_discover_tests(test_cascading)
     gtest_discover_tests(test_conversions)
     gtest_discover_tests(test_frequency_sweep)
-    gtest_discover_tests(test_smith_chart)
+    gtest_discover_tests(test_smith_chart_generator)
     
     # Combined test runner
     add_custom_target(run_tests
@@ -102,8 +103,8 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
         COMMAND test_cascading
         COMMAND test_conversions
         COMMAND test_frequency_sweep
-        COMMAND test_smith_chart
-        DEPENDS test_components test_cascading test_conversions test_frequency_sweep test_smith_chart
+        COMMAND test_smith_chart_generator
+        DEPENDS test_components test_cascading test_conversions test_frequency_sweep test_smith_chart_generator
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
     )
 endif()
@@ -133,7 +134,7 @@ if(EMSCRIPTEN)
         )
         
         # Copy HTML demo file to build directory
-        configure_file(${CMAKE_SOURCE_DIR}/wasm/cascadix_demo.html 
+        configure_file(${CMAKE_SOURCE_DIR}/wasm/demo.html 
                       ${CMAKE_BINARY_DIR}/wasm/index.html COPYONLY)
     endif()
 endif()

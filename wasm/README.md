@@ -5,7 +5,7 @@ This directory contains the WebAssembly bindings and web interface for the Casca
 ## Files
 
 - `bindings.cc` - Emscripten bindings that expose the C++ API to JavaScript
-- `cascadix_demo.html` - Complete web interface demonstrating all library features
+- `demo.html` - Complete web interface demonstrating all library features
 - `test_wasm.js` - Node.js test script for WASM functionality
 
 ## Building
@@ -28,13 +28,18 @@ This will generate:
 ### In Browser
 
 1. Build the WASM files as described above
-2. Copy `cascadix_demo.html` to the build output directory
+2. The HTML file is automatically copied as `index.html` to the build output directory
 3. Serve the directory with a web server (required for WASM):
    ```bash
    cd build-wasm/wasm
    python3 -m http.server 8000
    ```
-4. Open http://localhost:8000/cascadix_demo.html
+   Or use the provided script from the wasm directory:
+   ```bash
+   cd wasm
+   ./serve.sh
+   ```
+4. Open http://localhost:8000/
 
 ### In Node.js
 
