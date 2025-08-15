@@ -3,6 +3,7 @@
 
 #include "two_port.h"
 #include "components.h"
+#include "frequency_sweep.h"
 #include <vector>
 #include <functional>
 

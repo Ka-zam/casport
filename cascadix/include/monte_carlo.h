@@ -278,35 +278,8 @@ private:
         }
     }
     
-    // Calculate statistical parameters
-    void calculate_statistics(monte_carlo_results& results) {
-        if (results.impedances.empty()) return;
-        
-        // Calculate mean
-        complex sum(0, 0);
-        for (const auto& z : results.impedances) {
-            sum += z;
-        }
-        results.mean_impedance = sum / static_cast<double>(results.num_samples);
-        
-        // Calculate standard deviation
-        complex sum_sq(0, 0);
-        for (const auto& z : results.impedances) {
-            complex diff = z - results.mean_impedance;
-            sum_sq += complex(diff.real() * diff.real(), diff.imag() * diff.imag());
-        }
-        complex variance = sum_sq / static_cast<double>(results.num_samples - 1);
-        results.std_impedance = complex(std::sqrt(variance.real()), std::sqrt(variance.imag()));
-        
-        // Calculate yield (example: VSWR < 2.0)
-        size_t pass_count = 0;
-        for (const auto& s : results.s_params) {
-            if (s.vswr() < 2.0) {
-                pass_count++;
-            }
-        }
-        results.yield_rate = 100.0 * pass_count / results.num_samples;
-    }
+    // Calculate statistical parameters (implemented in .cc file)
+    void calculate_statistics(monte_carlo_results& results);
 };
 
 // Correlation matrix for component variations

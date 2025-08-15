@@ -1,0 +1,110 @@
+* { 
+    margin: 0; 
+    padding: 0; 
+    box-sizing: border-box; 
+}
+
+body { 
+    font-family: 'Courier New', monospace; 
+    background: #faf8f4; 
+    color: #1a1a1e; 
+    overflow: hidden; 
+}
+
+#app { 
+    width: 100vw; 
+    height: 100vh; 
+    display: flex; 
+    flex-direction: column; 
+}
+
+.layout-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 2px;
+    height: 100vh;
+    background: #2a2a2e;
+}
+
+.panel {
+    background: #faf8f4;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.panel-header {
+    background: #f0ece4;
+    padding: 0.75rem;
+    border-bottom: 1px solid #2a2a2e;
+    flex-shrink: 0;
+}
+
+.panel-header h3 {
+    margin: 0;
+    font-size: 1rem;
+    color: #1a1a1e;
+    font-weight: bold;
+}
+
+.panel-content {
+    flex: 1;
+    overflow: auto;
+    position: relative;
+}
+
+#smith-chart-container, #rl-plot-container {
+    width: 100%;
+    height: 100%;
+}
+
+#smith-chart { 
+    width: 100%; 
+    height: 100%; 
+    cursor: grab; 
+}
+
+#smith-chart:active { 
+    cursor: grabbing; 
+}
+
+#rl-plot-canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.loading {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: #4a4a5e;
+}
+
+button { 
+    background: #2a2a2e; 
+    color: #faf8f4; 
+    border: 1px solid #1a1a1e; 
+    padding: 0.5rem 1rem; 
+    border-radius: 4px; 
+    cursor: pointer; 
+    width: 100%; 
+    margin: 0.5rem 0; 
+    font-family: 'Courier New', monospace;
+}
+
+button:hover { 
+    background: #3a3a3e; 
+}
+
+.slider { 
+    width: 100%; 
+    margin: 0.5rem 0; 
+}
+
+label { 
+    display: block; 
+    margin: 1rem 0; 
+}

@@ -1,21 +1,80 @@
-# Cascadix
+# Casport RF Design Tool
 
-⚡ A blazing-fast C++ library for analyzing cascaded 2-port networks using ABCD (chain) matrices. Supports both native compilation and WebAssembly for browser-based RF/microwave circuit analysis.
+A complete RF circuit analysis and Smith chart visualization platform combining the high-performance Cascadix C++ library with an interactive web-based interface.
 
-> **Note**: GitHub repository is currently named `casport` but the library is `cascadix`
+## 🎯 Overview
 
-## Features
+Casport integrates:
+- **Cascadix**: High-performance C++ RF analysis library  
+- **Interactive Web App**: Real-time Smith chart visualization with WebGPU
+- **Component Builder**: Drag-and-drop network design with lil-gui
+- **Multiple Analysis Types**: Frequency sweeps, Monte Carlo, component sweeps
 
+## 🎯 Features
+
+### **Cascadix C++ Library**
 - **ABCD Matrix Operations**: Full support for chain matrix multiplication and cascading
 - **Component Library**: Series/shunt RLC components, transmission lines, transformers
 - **Parameter Conversions**: S-parameters, Z-parameters, Y-parameters, H-parameters
-- **Operator Overloading**: Intuitive `*` operator for cascading networks
-- **Complex Arithmetic**: Full complex number support for frequency-domain analysis
-- **WebAssembly Support**: Run in browsers via Emscripten compilation
-- **Type-Safe**: Modern C++ with `std::complex<double>` throughout
+- **Monte Carlo Analysis**: Component tolerance and statistical analysis
+- **Smith Chart Calculations**: Impedance transformations and arc generation
+- **WebAssembly Support**: Browser execution via Emscripten
 
-## Quick Start
+### **Interactive Web Application**  
+- **Real-time Smith Chart** with WebGPU acceleration
+- **Interactive Network Builder** using lil-gui
+- **Multiple Analysis Types**: Frequency sweeps, component sweeps, Monte Carlo
+- **Point Stream Architecture** for flexible data visualization
+- **Hot Reload Development** for rapid iteration
 
+### **Unified Architecture**
+```
+casport/
+├── cascadix/              # C++ RF analysis library
+│   ├── include/           # Header files
+│   ├── src/               # Implementation
+│   ├── tests/             # Unit tests (95% pass rate)
+│   ├── wasm/              # WebAssembly bindings
+│   └── apps/              # Example applications
+├── app/                   # Web application
+│   ├── src/               # JavaScript/WebGPU frontend
+│   ├── public/            # Static assets + WASM files
+│   └── package.json       # Web dependencies
+├── Makefile              # Unified build system
+└── CMakeLists.txt        # C++ build configuration
+```
+
+## 🚀 Quick Start
+
+### **Prerequisites**
+- C++ compiler (GCC 13+ recommended)
+- CMake 3.14+
+- Node.js 18+
+- Modern browser with WebGPU support
+
+### **Installation**
+
+1. **Clone and setup**:
+   ```bash
+   git clone <repository-url> casport
+   cd casport
+   make setup
+   ```
+
+2. **Install Emscripten** (for WASM builds):
+   ```bash
+   ./setup-emscripten.sh
+   source emsdk/emsdk_env.sh
+   ```
+
+3. **Build and run**:
+   ```bash
+   make all
+   ```
+   
+   Opens `http://localhost:5173` with the interactive RF design tool.
+
+### **Example: C++ Library Usage**
 ```cpp
 #include "cascadix.h"
 using namespace cascadix;
@@ -42,31 +101,51 @@ auto z_in = network.input_impedance(50.0);
 std::cout << "Input impedance: " << z_in << " Ω" << std::endl;
 ```
 
-## Building
+## 🛠️ Build System
 
-### Native Build
-
+### **Make Targets**
 ```bash
-mkdir build && cd build
-cmake ..
-make
+make help       # Show all available commands
+make status     # Check build environment
+
+# Development
+make all        # Build WASM + start dev server  
+make native     # Build C++ library only
+make wasm       # Build WASM module only
+make dev        # Start web dev server only
+
+# Testing
+make test       # Run C++ unit tests
+make test-wasm  # Test WASM module loading
+
+# Production
+make build      # Production web build
+make preview    # Preview production build
+
+# Utilities
+make clean      # Clean all build artifacts
+make install    # Install web dependencies
 ```
 
-### WebAssembly Build
+### **Development Workflow**
 
-```bash
-mkdir build-wasm && cd build-wasm
-emcmake cmake ..
-emmake make
-# Open wasm/cascadix_wasm.js in browser
-```
+1. **First time setup**:
+   ```bash
+   make install        # Install web dependencies
+   make native         # Build and test C++ library
+   ```
 
-### Running Tests
+2. **Regular development**:
+   ```bash
+   make all           # Build WASM + start dev server
+   # Edit code and enjoy hot reload!
+   ```
 
-```bash
-cd build
-make test
-```
+3. **C++ changes**:
+   ```bash
+   make wasm          # Rebuild WASM module
+   # Refresh browser to see changes
+   ```
 
 ## API Overview
 

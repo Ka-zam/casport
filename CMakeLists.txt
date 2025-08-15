@@ -30,13 +30,16 @@ else()
 endif()
 
 # Include directories
-include_directories(${CMAKE_SOURCE_DIR}/include)
+include_directories(${CMAKE_SOURCE_DIR}/cascadix/include)
 
 # Main library sources
 set(CASCADIX_SOURCES
-    src/two_port.cc
-    src/components.cc
-    src/smith_chart_generator.cc
+    cascadix/src/two_port.cc
+    cascadix/src/components.cc
+    cascadix/src/smith_chart_generator.cc
+    cascadix/src/component_sweep.cc
+    cascadix/src/smith_chart.cc
+    cascadix/src/monte_carlo.cc
 )
 
 # Create library
@@ -47,7 +50,7 @@ else()
 endif()
 
 target_include_directories(${PROJECT_NAME} PUBLIC 
-    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/include>
+    $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/cascadix/include>
     $<INSTALL_INTERFACE:include>
 )
 
@@ -74,19 +77,19 @@ if(BUILD_TESTS AND NOT EMSCRIPTEN)
     enable_testing()
     
     # Test executables
-    add_executable(test_components tests/test_components.cc)
+    add_executable(test_components cascadix/tests/test_components.cc)
     target_link_libraries(test_components ${PROJECT_NAME} gtest_main)
     
-    add_executable(test_cascading tests/test_cascading.cc)
+    add_executable(test_cascading cascadix/tests/test_cascading.cc)
     target_link_libraries(test_cascading ${PROJECT_NAME} gtest_main)
     
-    add_executable(test_conversions tests/test_conversions.cc)
+    add_executable(test_conversions cascadix/tests/test_conversions.cc)
     target_link_libraries(test_conversions ${PROJECT_NAME} gtest_main)
     
-    add_executable(test_frequency_sweep tests/test_frequency_sweep.cc)
+    add_executable(test_frequency_sweep cascadix/tests/test_frequency_sweep.cc)
     target_link_libraries(test_frequency_sweep ${PROJECT_NAME} gtest_main)
     
-    add_executable(test_smith_chart_generator tests/test_smith_chart_generator.cc)
+    add_executable(test_smith_chart_generator cascadix/tests/test_smith_chart_generator.cc)
     target_link_libraries(test_smith_chart_generator ${PROJECT_NAME} gtest_main)
     
     # Add tests
@@ -111,7 +114,7 @@ endif()
 
 # Build examples if requested
 if(BUILD_EXAMPLES AND NOT EMSCRIPTEN)
-    add_subdirectory(apps)
+    add_subdirectory(cascadix/apps)
 endif()
 
 # WebAssembly specific configuration
@@ -123,8 +126,8 @@ if(EMSCRIPTEN)
     )
     
     # Add WASM bindings if they exist
-    if(EXISTS ${CMAKE_SOURCE_DIR}/wasm/bindings.cc)
-        add_executable(cascadix_wasm wasm/bindings.cc)
+    if(EXISTS ${CMAKE_SOURCE_DIR}/cascadix/wasm/bindings.cc)
+        add_executable(cascadix_wasm cascadix/wasm/bindings.cc)
         target_link_libraries(cascadix_wasm ${PROJECT_NAME})
         
         set_target_properties(cascadix_wasm PROPERTIES
@@ -133,9 +136,11 @@ if(EMSCRIPTEN)
             LINK_FLAGS "-s MODULARIZE=1 -s EXPORT_NAME='CascadixModule' -s EXPORTED_RUNTIME_METHODS=['ccall','cwrap'] --bind"
         )
         
-        # Copy HTML demo file to build directory
-        configure_file(${CMAKE_SOURCE_DIR}/wasm/demo.html 
-                      ${CMAKE_BINARY_DIR}/wasm/index.html COPYONLY)
+        # Copy HTML demo file to build directory if it exists
+        if(EXISTS ${CMAKE_SOURCE_DIR}/cascadix/wasm/demo.html)
+            configure_file(${CMAKE_SOURCE_DIR}/cascadix/wasm/demo.html 
+                          ${CMAKE_BINARY_DIR}/wasm/index.html COPYONLY)
+        endif()
     endif()
 endif()
 
@@ -149,7 +154,7 @@ install(TARGETS ${PROJECT_NAME}
     RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
 )
 
-install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
+install(DIRECTORY cascadix/include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/${PROJECT_NAME})
 install(EXPORT cascadixConfig DESTINATION share/cascadix/cmake)
 
 # Export for use in build tree

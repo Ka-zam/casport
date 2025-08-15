@@ -87,11 +87,18 @@ std::vector<float> smith_chart_generator::generate_sweep_points(
     
     std::vector<float> points;
     
-    // For a single network instance, we can't vary frequency
-    // So we just calculate the impedance for the given load
+    // For a single network instance (like a resistor), we can't vary frequency
+    // but we should still generate the requested number of points all at the same location
+    std::vector<double> freq_points = frequencies.get_frequencies();
+    points.reserve(freq_points.size() * 2);
+    
     complex z_in = network.input_impedance(load_impedance);
     complex gamma = impedance_to_reflection(z_in, z0_reference);
-    add_point_to_vector(gamma, points);
+    
+    // Generate the same point for each frequency (for frequency-independent components)
+    for (size_t i = 0; i < freq_points.size(); ++i) {
+        add_point_to_vector(gamma, points);
+    }
     
     return points;
 }
@@ -300,6 +307,192 @@ double monte_carlo_sampler::sample_gaussian(double mean, double std_dev) const {
 double monte_carlo_sampler::sample_uniform(double min_val, double max_val) const {
     std::uniform_real_distribution<double> dist(min_val, max_val);
     return dist(m_rng);
+}
+
+// Enhanced smith_chart_generator implementation
+point_stream smith_chart_generator_enhanced::generate_frequency_sweep_stream(
+    std::function<two_port(double)> network_builder,
+    const frequency_sweep& frequencies,
+    const complex& load_impedance,
+    double z0_reference,
+    const trace_metadata& metadata) const {
+    
+    point_stream stream;
+    stream.metadata = metadata;
+    
+    std::vector<double> freq_points = frequencies.get_frequencies();
+    stream.reserve(freq_points.size());
+    
+    complex prev_gamma;
+    bool first_point = true;
+    
+    for (size_t i = 0; i < freq_points.size(); i++) {
+        double freq = freq_points[i];
+        
+        // Build network for this frequency
+        two_port network = network_builder(freq);
+        
+        // Calculate input impedance
+        complex z_in = network.input_impedance(load_impedance);
+        complex gamma = impedance_to_reflection(z_in, z0_reference);
+        
+        // Add interpolated points if needed
+        if (!first_point && m_config.adaptive_sampling && should_interpolate(prev_gamma, gamma)) {
+            int interp_count = calculate_interpolation_count(prev_gamma, gamma);
+            for (int j = 1; j <= interp_count; j++) {
+                double t = double(j) / double(interp_count + 1);
+                complex gamma_interp = prev_gamma + t * (gamma - prev_gamma);
+                float freq_interp = static_cast<float>(freq_points[i-1] + t * (freq - freq_points[i-1]));
+                stream.add_point(gamma_interp, freq_interp, 0.0f);
+            }
+        }
+        
+        // Add the current point
+        stream.add_point(gamma, static_cast<float>(freq), 0.0f);
+        
+        prev_gamma = gamma;
+        first_point = false;
+    }
+    
+    return stream;
+}
+
+point_stream smith_chart_generator_enhanced::generate_component_sweep_stream(
+    const component_sweep& sweep,
+    const complex& load_impedance,
+    double z0_reference,
+    const trace_metadata& metadata) const {
+    
+    point_stream stream;
+    stream.metadata = metadata;
+    
+    auto results = perform_component_sweep(sweep, z0_reference, identity_two_port(), 
+                                         identity_two_port(), load_impedance);
+    
+    stream.reserve(results.values.size());
+    
+    for (size_t i = 0; i < results.values.size(); i++) {
+        complex gamma = results.reflection_coefficients[i];
+        float value = static_cast<float>(results.values[i]);
+        stream.add_point(gamma, value, 0.0f);
+    }
+    
+    return stream;
+}
+
+point_stream smith_chart_generator_enhanced::generate_monte_carlo_stream(
+    const std::vector<complex>& impedances,
+    double z0_reference,
+    const trace_metadata& metadata) const {
+    
+    point_stream stream;
+    stream.metadata = metadata;
+    stream.reserve(impedances.size());
+    
+    for (const auto& impedance : impedances) {
+        complex gamma = impedance_to_reflection(impedance, z0_reference);
+        float mag = static_cast<float>(std::abs(impedance));
+        stream.add_point(gamma, mag, 0.0f);
+    }
+    
+    return stream;
+}
+
+smith_chart_generator_enhanced::mesh_2d smith_chart_generator_enhanced::generate_2d_mesh(
+    std::function<two_port(double, double)> network_builder,
+    const frequency_sweep& frequencies,
+    double component_min, double component_max, size_t component_steps,
+    const complex& load_impedance,
+    double z0_reference,
+    const trace_metadata& metadata) const {
+    
+    mesh_2d mesh;
+    mesh.metadata = metadata;
+    mesh.rows = frequencies.num_points;
+    mesh.cols = component_steps;
+    
+    std::vector<double> freq_points = frequencies.get_frequencies();
+    mesh.vertices.reserve(mesh.rows * mesh.cols * 2);
+    mesh.values.reserve(mesh.rows * mesh.cols);
+    
+    // Generate grid vertices
+    for (size_t freq_idx = 0; freq_idx < freq_points.size(); freq_idx++) {
+        double freq = freq_points[freq_idx];
+        
+        for (size_t comp_idx = 0; comp_idx < component_steps; comp_idx++) {
+            double t = static_cast<double>(comp_idx) / (component_steps - 1);
+            double component_value = component_min + t * (component_max - component_min);
+            
+            // Build network with this frequency and component value
+            two_port network = network_builder(freq, component_value);
+            
+            // Calculate impedance and convert to Smith chart coordinates
+            complex z_in = network.input_impedance(load_impedance);
+            complex gamma = impedance_to_reflection(z_in, z0_reference);
+            
+            mesh.vertices.push_back(static_cast<float>(gamma.real()));
+            mesh.vertices.push_back(static_cast<float>(gamma.imag()));
+            mesh.values.push_back(static_cast<float>(component_value));
+        }
+    }
+    
+    // Generate triangle indices for mesh rendering
+    mesh.indices.reserve((mesh.rows - 1) * (mesh.cols - 1) * 6);
+    
+    for (size_t r = 0; r < mesh.rows - 1; r++) {
+        for (size_t c = 0; c < mesh.cols - 1; c++) {
+            uint32_t i00 = r * mesh.cols + c;
+            uint32_t i01 = r * mesh.cols + (c + 1);
+            uint32_t i10 = (r + 1) * mesh.cols + c;
+            uint32_t i11 = (r + 1) * mesh.cols + (c + 1);
+            
+            // First triangle
+            mesh.indices.push_back(i00);
+            mesh.indices.push_back(i01);
+            mesh.indices.push_back(i10);
+            
+            // Second triangle
+            mesh.indices.push_back(i01);
+            mesh.indices.push_back(i11);
+            mesh.indices.push_back(i10);
+        }
+    }
+    
+    return mesh;
+}
+
+point_stream smith_chart_generator_enhanced::generate_animated_sweep(
+    std::function<two_port(double)> network_builder,
+    const frequency_sweep& frequencies,
+    const complex& load_impedance,
+    double z0_reference,
+    float animation_duration_seconds,
+    const trace_metadata& metadata) const {
+    
+    point_stream stream;
+    stream.metadata = metadata;
+    
+    std::vector<double> freq_points = frequencies.get_frequencies();
+    stream.reserve(freq_points.size());
+    
+    for (size_t i = 0; i < freq_points.size(); i++) {
+        double freq = freq_points[i];
+        
+        // Build network for this frequency
+        two_port network = network_builder(freq);
+        
+        // Calculate input impedance
+        complex z_in = network.input_impedance(load_impedance);
+        complex gamma = impedance_to_reflection(z_in, z0_reference);
+        
+        // Calculate timestamp for this point
+        float t = static_cast<float>(i) / (freq_points.size() - 1);
+        float timestamp = t * animation_duration_seconds;
+        
+        stream.add_point(gamma, static_cast<float>(freq), timestamp);
+    }
+    
+    return stream;
 }
 
 } // namespace cascadix

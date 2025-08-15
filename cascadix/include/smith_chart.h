@@ -261,6 +261,33 @@ public:
         return {center, radius};
     }
     
+    // Enhanced functions declared but implemented in .cc file
+    arc_coefficients get_series_l_arc_enhanced(double l_min, double l_max, double frequency, 
+                                               double r_series = 0.0, double q_factor = 0.0) const;
+    arc_coefficients get_series_c_arc_enhanced(double c_min, double c_max, double frequency,
+                                               double r_series = 0.0, double q_factor = 0.0) const;
+    
+    std::vector<complex> get_circle_intersections(
+        const std::pair<complex, double>& circle1,
+        const std::pair<complex, double>& circle2) const;
+    
+    std::vector<complex> generate_grid_points(
+        const std::vector<double>& resistance_values,
+        const std::vector<double>& reactance_values,
+        size_t points_per_circle = 50) const;
+    
+    std::pair<complex, complex> calculate_bounds(
+        const std::vector<complex>& impedances) const;
+    
+    complex convert_impedance_to_admittance_gamma(const complex& z_gamma) const;
+    
+    std::vector<complex> generate_vswr_contour(double vswr, size_t num_points = 100) const;
+    
+    std::pair<complex, double> calculate_input_stability_circle(const s_parameters& s_params) const;
+    std::pair<complex, double> calculate_output_stability_circle(const s_parameters& s_params) const;
+    std::pair<complex, double> calculate_gain_circle(const s_parameters& s_params, 
+                                                    double gain_db, bool is_source) const;
+    
 private:
     double z0_system;  // System reference impedance
 };
